@@ -1,5 +1,6 @@
 const PORT = 5000;
 const express = require("express");
+// const mysql = require("mysql");
 const bodyParser = require("body-parser");
 
 const userRoute = require("./routes/user-routes");
@@ -8,6 +9,14 @@ const productRoute = require("./routes/product-routes");
 const HttpError = require("./models/http-error");
 
 const app = express();
+
+// Create a MySQL connection pool
+// const pool = mysql.createPool({
+//   host: "127.0.0.1",
+//   user: "root",
+//   password: "",
+//   database: "mydb",
+// });
 
 app.use(bodyParser.json());
 app.use("/api/users", userRoute);
