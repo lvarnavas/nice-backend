@@ -9,17 +9,23 @@ const DUMMY_USERS = [
   },
 ];
 
-const getUserbyId = (req, res, next) => {
-  const userId = req.params.userId;
-  const user = DUMMY_USERS.find((u) => {
-    return u.id === userId;
-  });
-
-  if (!user) {
-    return next(new HttpError("Could not find a user for this id", 404));
-  }
-
-  res.json({ user });
+const getUsers = (req, res, next) => {
+  res.json({ users: DUMMY_USERS });
 };
 
-exports.getUserbyId = getUserbyId;
+const logIn = (req, res, next) => {
+  const { email, password } = req.body;
+
+  const identifiedUser = DUMMY_USERS.find((u) => u.email === email);
+  if (!identifiedUser || identifiedUser.password !== password) {
+    throw new HttpError(
+      "Could not identify user, credentials seem to be wrong.",
+      401
+    );
+  }
+
+  res.json({ message: "Logged in" });
+};
+
+exports.getUsers = getUsers;
+exports.logIn = logIn;

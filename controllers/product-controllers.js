@@ -1,4 +1,4 @@
-const uuid = require("uuid/v4");
+const uuid = require("uuid");
 
 const HttpError = require("../models/http-error");
 
@@ -25,6 +25,12 @@ const DUMMY_QUANTITY = [
   {
     quantity: 342,
     productId: "1",
+  },
+];
+
+const DUMMY_CARS = [
+  {
+    carId: "2",
   },
 ];
 

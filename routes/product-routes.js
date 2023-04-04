@@ -18,4 +18,11 @@ router.patch(
   productControllers.updateQuantityByProductId
 );
 
+// Endpoints from Word
+
+router.get(
+  "/loads/:carId/:startDate/:endDate",
+  productControllers.getLoadsByCarId
+);
+
 module.exports = router;
