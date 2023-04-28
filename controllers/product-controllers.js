@@ -4,19 +4,36 @@ const HttpError = require("../models/http-error");
 
 const getLoads = (req, res, next) => {
   const { carId, startDate, endDate } = req.params;
+  const carIdParam = carId || null;
+  const { flag } = req.body;
 
-  // ΦΟΡΤΩΜΑΤΑ ΕΝΟΣ ΣΥΓΚΕΚΡΙΜΕΝΟΥ ΑΜΑΞΙΟΥ - query 1
-  const sql =
-    "SET @sql = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`')) INTO @sql FROM mydb.products p; SET @sql = CONCAT('SELECT l.date, l.id, ', @sql, ' FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.products p ON t.products_id = p.id WHERE l.car_id = " +
-    `${carId}` +
-    " AND l.date BETWEEN \\'" +
-    `${startDate}` +
-    " \\' AND \\'" +
-    `${endDate}` +
-    "\\' GROUP BY l.date, l.id ORDER BY l.date, l.id'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt";
+  let loads;
+  if (carIdParam !== null) {
+    if (flag === "singleCarLoads") {
+      // [QUERY 1] -> ΦΟΡΤΩΜΑΤΑ ΕΝΟΣ ΣΥΓΚΕΚΡΙΜΕΝΟΥ ΑΜΑΞΙΟΥ
+      loads =
+        "SET @sql = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`')) INTO @sql FROM mydb.products p; SET @sql = CONCAT('SELECT l.date, l.id, ', @sql, ' FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.products p ON t.products_id = p.id WHERE l.car_id = " +
+        `${carId}` +
+        " AND l.date BETWEEN \\'" +
+        `${startDate}` +
+        " \\' AND \\'" +
+        `${endDate}` +
+        "\\' GROUP BY l.date, l.id ORDER BY l.date, l.id'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt";
+    }
+  } else {
+    if (flag === "totalCarLoads") {
+      // [QUERY 2] -> ΦΟΡΤΩΜΑΤΑ ΟΛΩΝ ΤΩΝ ΑΜΑΞΙΩΝ
+      loads =
+        "SET @sql = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`')) INTO @sql FROM mydb.products p; SET @sql = CONCAT('SELECT c.pinakida AS Car name, ', @sql, ' FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.products p ON t.products_id = p.id JOIN mydb.cars c ON l.car_id = c.id WHERE l.date BETWEEN \\'" +
+        `${startDate}` +
+        "\\' AND \\'" +
+        `${endDate}` +
+        "\\' GROUP BY c.pinakida'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt";
+    }
+  }
 
   try {
-    connection.query(sql, (error, results) => {
+    connection.query(loads, (error, results) => {
       if (error) {
         throw error;
       }
@@ -35,22 +52,19 @@ const getDestructions = (req, res, next) => {
   const carIdParam = carId || null;
   const { flag } = req.body;
 
-  let sql;
+  let destructions;
   if (carIdParam !== null) {
-    // Queries that requires carId
-    if (flag === "") {
-      // ΚΑΤΑΣΤΡΟΦΕΣ ΑΜΑΞΙΩΝ - query 2
-      sql =
-        "SET @sql = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', cdt.quantity, 0)) AS `', p.name, '`')) INTO @sql FROM mydb.products p; SET @sql = CONCAT('SELECT cd.date, cd.id, ', @sql, ' FROM mydb.car_destructions cd JOIN mydb.car_destruction_transaction cdt ON cd.id = cdt.car_destructions_id JOIN mydb.products p ON cdt.products_id = p.id WHERE cd.cars_id = " +
-        `${carIdParam}` +
-        " AND cd.date BETWEEN \\'" +
+    if (flag === "totalCarDestructions") {
+      // [QUERY 3] -> ΚΑΤΑΣΤΡΟΦΕΣ ΟΛΩΝ ΤΩΝ ΑΜΑΞΙΩΝ
+      destructions =
+        "SET @sql_products = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(CASE WHEN cdt.products_id = ', p.id, ' THEN cdt.quantity ELSE 0 END) AS `', p.name, '`')) INTO @sql_products FROM mydb.car_destruction_transaction AS cdt JOIN mydb.products AS p ON cdt.products_id = p.id; SET @sql = CONCAT('SELECT c.pinakida AS car_name, ', @sql_products, ' FROM mydb.car_destructions AS cd JOIN mydb.car_destruction_transaction AS cdt ON cd.id = cdt.car_destructions_id JOIN mydb.cars AS c ON cd.cars_id = c.id JOIN mydb.products AS p ON cdt.products_id = p.id WHERE cd.date BETWEEN \\'" +
         `${startDate}` +
-        " \\' AND \\'" +
+        "\\' AND \\'" +
         `${endDate}` +
-        "\\' GROUP BY cd.date, cd.id ORDER BY cd.date, cd.id'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt";
-    } else if (flag === "") {
-      // ΚΑΤΑΣΤΡΟΦΕΣ ΕΝΟΣ ΣΥΓΚΕΚΡΙΜΕΝΟΥ ΑΜΑΞΙΟΥ - query 4
-      sql =
+        "\\' GROUP BY cd.cars_id, c.pinakida'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt";
+    } else if (flag === "singleCarDestructions") {
+      // [QUERY 4] -> ΚΑΤΑΣΤΡΟΦΕΣ ΕΝΟΣ ΣΥΓΚΕΚΡΙΜΕΝΟΥ ΑΜΑΞΙΟΥ
+      destructions =
         "SET @sql = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', cdt.quantity, 0)) AS `', p.name, '`')) INTO @sql FROM mydb.products p; SET @sql = CONCAT('SELECT cd.date, cd.id, ', @sql, ' FROM mydb.car_destructions cd JOIN mydb.car_destruction_transaction cdt ON cd.id = cdt.car_destructions_id JOIN mydb.products p ON cdt.products_id = p.id WHERE cd.cars_id = " +
         `${carIdParam}` +
         " AND cd.date BETWEEN \\'" +
@@ -60,25 +74,17 @@ const getDestructions = (req, res, next) => {
         "\\' GROUP BY cd.date, cd.id ORDER BY cd.date, cd.id'); PREPARE stmt FROM @sql; EXECUTE stmt";
     }
   } else {
-    if (flag === "") {
-      // ΚΑΤΑΣΤΡΟΦΕΣ ΟΛΩΝ ΤΩΝ ΑΜΑΞΙΩΝ - query 6
-      sql =
-        "SET @sql = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', rt.quantity, 0)) AS `', p.name, '`')) INTO @sql FROM mydb.products p; SET @sql = CONCAT('SELECT c.pinakida, ', @sql, ' FROM mydb.returns r JOIN mydb.returns_transaction rt ON r.id = rt.returns_id JOIN mydb.products p ON rt.products_id = p.id JOIN mydb.cars c ON r.car_id = c.id WHERE r.date BETWEEN \\'" +
-        `${startDate}` +
-        "\\' AND \\'" +
-        `${endDate}` +
-        "\\' GROUP BY r.car_id, c.pinakida ORDER BY r.car_id'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt";
-    } else if (flag === "") {
-      // ΚΑΤΑΣΤΡΟΦΕΣ ΑΠΟΘΗΚΗΣ - query 7
-      sql =
+    if (flag === "warehouseDestructions") {
+      // [QUERY 5] -> ΚΑΤΑΣΤΡΟΦΕΣ ΑΠΟΘΗΚΗΣ
+      destructions =
         "SET @sql_products = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(CASE WHEN wdt.products_id = ', p.id, ' THEN wdt.quantity ELSE 0 END) AS `', p.name, '`')) INTO @sql_products FROM mydb.warehouse_destruction_transaction AS wdt JOIN mydb.products AS p ON wdt.products_id = p.id; SET @sql = CONCAT('SELECT wd.date AS Date, ', @sql_products, ' FROM mydb.warehouse_destructions AS wd JOIN mydb.warehouse_destruction_transaction AS wdt ON wd.id = wdt.warehouse_destructions_id JOIN mydb.products AS p ON wdt.products_id = p.id WHERE wd.date BETWEEN \\'" +
         `${startDate}` +
         "\\' AND \\'" +
         `${endDate}` +
         "\\' GROUP BY wd.id, wd.date');PREPARE stmt FROM @sql;EXECUTE stmt;DEALLOCATE PREPARE stmt";
-    } else if (flag === "") {
-      // ΚΑΤΑΣΤΡΟΦΕΣ ΗΜΕΡΑΣ ΑΜΑΞΙΩΝ - query 8
-      sql =
+    } else if (flag === "dailyCarDestructions") {
+      // [QUERY 6] -> ΚΑΤΑΣΤΡΟΦΕΣ ΗΜΕΡΑΣ ΑΜΑΞΙΩΝ
+      destructions =
         "SET @sql_products = NULL;SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(CASE WHEN cdt.products_id = ',p.id,' THEN cdt.quantity ELSE 0 END) AS `',p.name,'`')) INTO @sql_products FROM mydb.car_destruction_transaction AS cdt JOIN mydb.products AS p ON cdt.products_id = p.id;SET @sql = CONCAT('SELECT DATE(cd.date) AS date, ', @sql_products, ' FROM mydb.car_destructions AS cd JOIN mydb.car_destruction_transaction AS cdt ON cd.id = cdt.car_destructions_id JOIN mydb.products AS p ON cdt.products_id = p.id WHERE cd.date BETWEEN \\'" +
         `${startDate}` +
         "\\' AND \\'" +
@@ -88,7 +94,7 @@ const getDestructions = (req, res, next) => {
   }
 
   try {
-    connection.query(sql, (error, results) => {
+    connection.query(destructions, (error, results) => {
       if (error) {
         throw error;
       }
@@ -109,11 +115,11 @@ const getReturns = (req, res, next) => {
   const carIdParam = carId || null;
   const { flag } = req.body;
 
-  let sql;
+  let returns;
   if (carIdParam !== null) {
-    if (flag === "") {
-      // ΕΠΙΣΤΡΟΦΕΣ ΕΝΟΣ ΣΥΓΚΕΚΡΙΜΕΝΟΥ ΑΜΑΞΙΟΥ - query 3
-      sql =
+    if (flag === "singleCarReturns") {
+      // [QUERY 7] -> ΕΠΙΣΤΡΟΦΕΣ ΕΝΟΣ ΣΥΓΚΕΚΡΙΜΕΝΟΥ ΑΜΑΞΙΟΥ
+      returns =
         "SET @sql = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', rt.quantity, 0)) AS `', p.name, '`')) INTO @sql FROM mydb.products p; SET @sql = CONCAT('SELECT r.date, r.id, ', @sql, ' FROM mydb.returns r JOIN mydb.returns_transaction rt ON r.id = rt.returns_id JOIN mydb.products p ON rt.products_id = p.id WHERE r.car_id = " +
         `${carId}` +
         " AND r.date BETWEEN \\'" +
@@ -123,9 +129,9 @@ const getReturns = (req, res, next) => {
         "\\' GROUP BY r.date, r.id ORDER BY r.date, r.id'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt";
     }
   } else {
-    if (flag === "") {
-      // ΕΠΙΣΤΡΟΦΕΣ ΟΛΩΝ ΤΩΝ ΑΜΑΞΙΩΝ - query 5
-      sql =
+    if (flag === "totalCarReturns") {
+      // [QUERY 8] -> ΕΠΙΣΤΡΟΦΕΣ ΟΛΩΝ ΤΩΝ ΑΜΑΞΙΩΝ
+      returns =
         "SET @sql = NULL;SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', rt.quantity, 0)) AS `', p.name, '`')) INTO @sql FROM mydb.products p;SET @sql = CONCAT('SELECT c.pinakida, ', @sql, ' FROM mydb.returns r JOIN mydb.returns_transaction rt ON r.id = rt.returns_id JOIN mydb.products p ON rt.products_id = p.id JOIN mydb.cars c ON r.car_id = c.id WHERE r.date BETWEEN \\'" +
         `${startDate}` +
         "\\' AND \\'" +
@@ -135,7 +141,7 @@ const getReturns = (req, res, next) => {
   }
 
   try {
-    connection.query(sql, (error, results) => {
+    connection.query(returns, (error, results) => {
       if (error) {
         throw error;
       }
@@ -149,6 +155,78 @@ const getReturns = (req, res, next) => {
   }
 };
 
+const getWareHouseStatus = (req, res, next) => {
+  // Get the current date
+  // Fri Apr 28 2023 23:36:40 GMT+0200 (Central European Summer Time)
+  const today = new Date();
+
+  // Get the first day of the current month
+  // Sat Apr 01 2023 00:00:00 GMT+0200 (Central European Summer Time)
+  const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  // '2023-03-31'
+  const formattedFirstDayOfMonth = firstDayOfMonth.toISOString().slice(0, 10);
+
+  // Get the last day of the current month
+  // Sun Apr 30 2023 00:00:00 GMT+0200 (Central European Summer Time)
+  const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  // '2023-04-29'
+  const formattedLastDayOfMonth = lastDayOfMonth.toISOString().slice(0, 10);
+
+  // Get the first day of the previous month
+  // Wed Mar 01 2023 00:00:00 GMT+0100 (Central European Standard Time)
+  const firstDayOfPrevMonth = new Date(
+    today.getFullYear(),
+    today.getMonth() - 1,
+    1
+  );
+  //'2023-02-28'
+  const formattedFirstDayOfPrevMonth = firstDayOfPrevMonth
+    .toISOString()
+    .slice(0, 10);
+
+  const warehouseStatus =
+    "SELECT p.id AS product_id, p.name AS product_name, COALESCE(SUM(loads_in_ntalika), 0) + COALESCE(SUM(apografi_proionton), 0) + COALESCE(SUM(returns), 0) - COALESCE(SUM(loads_out_ntalika), 0) - COALESCE(SUM(warehouse_destructions), 0) - COALESCE(SUM(car_destructions), 0) AS current_quantity FROM mydb.products p LEFT JOIN (SELECT products_id, SUM(quantity) AS loads_in_ntalika FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.cars c ON l.car_id = c.id WHERE l.date BETWEEN \\'" +
+    `${formattedFirstDayOfMonth}` +
+    "\\' AND \\'" +
+    `${formattedLastDayOfMonth}` +
+    "\\' AND c.isNtalika = 1 GROUP BY products_id) AS lin ON p.id = lin.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS apografi_proionton FROM mydb.apografi_proionton ap JOIN mydb.apografi_proionton_transaction apt ON ap.apografi_id = apt.apografi_apografi_id WHERE ap.month = \\'" +
+    `${formattedFirstDayOfPrevMonth}` +
+    "\\' GROUP BY products_id) AS apg ON p.id = apg.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS returns FROM mydb.returns r JOIN mydb.returns_transaction rt ON r.id = rt.returns_id WHERE r.date BETWEEN \\'" +
+    `${formattedFirstDayOfMonth}` +
+    "\\' AND \\'" +
+    `${formattedLastDayOfMonth}` +
+    "\\' GROUP BY products_id) AS ret ON p.id = ret.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS loads_out_ntalika FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.cars c ON l.car_id = c.id WHERE l.date BETWEEN \\'" +
+    `${formattedFirstDayOfMonth}` +
+    "\\' AND \\'" +
+    `${formattedLastDayOfMonth}` +
+    "\\' AND c.isNtalika = 0 GROUP BY products_id) AS lout ON p.id = lout.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS warehouse_destructions FROM mydb.warehouse_destructions wd JOIN mydb.warehouse_destruction_transaction wdt ON wd.id = wdt.warehouse_destructions_id WHERE wd.date BETWEEN \\'" +
+    `${formattedFirstDayOfMonth}` +
+    "\\' AND \\'" +
+    `${formattedLastDayOfMonth}` +
+    "\\' GROUP BY products_id) AS wde ON p.id = wde.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS car_destructions FROM mydb.car_destructions cd JOIN mydb.car_destruction_transaction cdt ON cd.id = cdt.car_destructions_id WHERE cd.date BETWEEN \\'" +
+    `${formattedFirstDayOfMonth}` +
+    "\\' AND \\'" +
+    `${formattedLastDayOfMonth}` +
+    "\\' GROUP BY products_id) AS cde ON p.id = cde.products_id GROUP BY p.id, p.name";
+
+  try {
+    connection.query(warehouseStatus, (error, results) => {
+      if (error) {
+        throw error;
+      }
+      const data = results[4];
+
+      res.json({ warehouseStatus: data });
+    });
+  } catch (err) {
+    const error = new HttpError(
+      "Fetching warehouse status failed, please try again."
+    );
+    return next(error);
+  }
+};
+
 exports.getLoads = getLoads;
 exports.getDestructions = getDestructions;
 exports.getReturns = getReturns;
+exports.getWareHouseStatus = getWareHouseStatus;
