@@ -287,6 +287,104 @@ const addLoads = (req, res, next) => {
     const secondPart = " (" + `${values}` + " ),";
     firstPart = firstPart + secondPart;
   });
+  // [QUERY 1] -> ΠΡΟΣΘΗΚΗ ΦΟΡΤΩΜΑΤΟΣ
+  const finalPart = firstPart.slice(0, -1) + ";";
+
+  try {
+    connection.query(finalPart, (error, results) => {
+      if (error) {
+        throw error;
+      }
+
+      res.json({ finalPart: results });
+    });
+  } catch (err) {
+    const error = new HttpError(
+      "Fetching warehouse last month destructions status failed, please try again."
+    );
+    return next(error);
+  }
+};
+
+const addCarDestructions = (req, res, next) => {
+  const { carId, date, products } = req.body;
+
+  let firstPart =
+    "INSERT INTO mydb.car_destructions (cars_id, date) VALUES (" +
+    `${carId}` +
+    ", ' " +
+    `${date}` +
+    " '); SET @last_inserted_car_destructions_id = LAST_INSERT_ID(); INSERT INTO mydb.car_destruction_transaction (car_destructions_id, products_id, quantity) VALUES";
+  products.forEach((product) => {
+    const values = `@last_inserted_car_destructions_id, ${product.productId}, ${product.quantity}`;
+    const secondPart = " (" + `${values}` + " ),";
+    firstPart = firstPart + secondPart;
+  });
+  // [QUERY 2] -> ΠΡΟΣΘΗΚΗ ΚΑΤΑΣΤΡΟΦΗΣ ΑΜΑΞΙΟΥ
+  const finalPart = firstPart.slice(0, -1) + ";";
+
+  try {
+    connection.query(finalPart, (error, results) => {
+      if (error) {
+        throw error;
+      }
+
+      res.json({ finalPart: results });
+    });
+  } catch (err) {
+    const error = new HttpError(
+      "Fetching warehouse last month destructions status failed, please try again."
+    );
+    return next(error);
+  }
+};
+
+const addWarehouseDestructions = (req, res, next) => {
+  const { date, products } = req.body;
+
+  let firstPart =
+    "INSERT INTO mydb.warehouse_destructions (date) VALUES ('" +
+    `${date}` +
+    " '); SET @last_inserted_warehouse_destruction_id = LAST_INSERT_ID(); INSERT INTO mydb.warehouse_destruction_transaction (warehouse_destructions_id, products_id, quantity) VALUES";
+  products.forEach((product) => {
+    const values = `@last_inserted_warehouse_destruction_id, ${product.productId}, ${product.quantity}`;
+    const secondPart = " (" + `${values}` + " ),";
+    firstPart = firstPart + secondPart;
+  });
+  // [QUERY 3] -> ΠΡΟΣΘΗΚΗ ΚΑΤΑΣΤΡΟΦΗ ΑΠΟΘΗΚΗΣ
+  const finalPart = firstPart.slice(0, -1) + ";";
+
+  try {
+    connection.query(finalPart, (error, results) => {
+      if (error) {
+        throw error;
+      }
+
+      res.json({ finalPart: results });
+    });
+  } catch (err) {
+    const error = new HttpError(
+      "Fetching warehouse last month destructions status failed, please try again."
+    );
+    return next(error);
+  }
+};
+
+const addCarReturns = (req, res, next) => {
+  const { carId, date, products } = req.body;
+
+  let firstPart =
+    "INSERT INTO mydb.returns (car_id, date) VALUES (" +
+    `${carId}` +
+    ", ' " +
+    `${date}` +
+    " '); SET @last_inserted_return_id = LAST_INSERT_ID(); INSERT INTO mydb.returns_transaction (returns_id, products_id, quantity) VALUES";
+  products.forEach((product) => {
+    const values = `@last_inserted_return_id, ${product.productId}, ${product.quantity}`;
+    const secondPart = " (" + `${values}` + " ),";
+    firstPart = firstPart + secondPart;
+  });
+  // [QUERY 4] -> ΠΡΟΣΘΗΚΗ ΕΠΙΣΤΡΟΦΗΣ ΑΜΑΞΙΟΥ
   const finalPart = firstPart.slice(0, -1) + ";";
 
   try {
@@ -311,3 +409,6 @@ exports.getReturns = getReturns;
 exports.getWareHouseStatus = getWareHouseStatus;
 exports.getWareHouseLastMonthStatus = getWareHouseLastMonthStatus;
 exports.addLoads = addLoads;
+exports.addCarDestructions = addCarDestructions;
+exports.addWarehouseDestructions = addWarehouseDestructions;
+exports.addCarReturns = addCarReturns;

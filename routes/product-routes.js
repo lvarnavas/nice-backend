@@ -25,5 +25,13 @@ router.post(
 );
 
 router.post("/add-loads", productControllers.addLoads);
+router.post("/add-car-destructions", productControllers.addCarDestructions);
+
+router.post(
+  "/add-warehouse-destructions",
+  productControllers.addWarehouseDestructions
+);
+
+router.post("/add-car-returns", productControllers.addCarReturns);
 
 module.exports = router;
