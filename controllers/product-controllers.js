@@ -185,38 +185,37 @@ const getWareHouseStatus = (req, res, next) => {
     .slice(0, 10);
 
   const warehouseStatus =
-    "SELECT p.id AS product_id, p.name AS product_name, COALESCE(SUM(loads_in_ntalika), 0) + COALESCE(SUM(apografi_proionton), 0) + COALESCE(SUM(returns), 0) - COALESCE(SUM(loads_out_ntalika), 0) - COALESCE(SUM(warehouse_destructions), 0) - COALESCE(SUM(car_destructions), 0) AS current_quantity FROM mydb.products p LEFT JOIN (SELECT products_id, SUM(quantity) AS loads_in_ntalika FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.cars c ON l.car_id = c.id WHERE l.date BETWEEN \'" +
+    "SELECT p.id AS product_id, p.name AS product_name, COALESCE(SUM(loads_in_ntalika), 0) + COALESCE(SUM(apografi_proionton), 0) + COALESCE(SUM(returns), 0) - COALESCE(SUM(loads_out_ntalika), 0) - COALESCE(SUM(warehouse_destructions), 0) - COALESCE(SUM(car_destructions), 0) AS current_quantity FROM mydb.products p LEFT JOIN (SELECT products_id, SUM(quantity) AS loads_in_ntalika FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.cars c ON l.car_id = c.id WHERE l.date BETWEEN '" +
     `${formattedFirstDayOfMonth}` +
-    "\' AND \'" +
+    "' AND '" +
     `${formattedLastDayOfMonth}` +
-    "\' AND c.isNtalika = 1 GROUP BY products_id) AS lin ON p.id = lin.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS apografi_proionton FROM mydb.apografi_proionton ap JOIN mydb.apografi_proionton_transaction apt ON ap.apografi_id = apt.apografi_apografi_id WHERE ap.month = \'" +
+    "' AND c.isNtalika = 1 GROUP BY products_id) AS lin ON p.id = lin.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS apografi_proionton FROM mydb.apografi_proionton ap JOIN mydb.apografi_proionton_transaction apt ON ap.apografi_id = apt.apografi_apografi_id WHERE ap.month = '" +
     `${formattedFirstDayOfPrevMonth}` +
-    "\' GROUP BY products_id) AS apg ON p.id = apg.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS returns FROM mydb.returns r JOIN mydb.returns_transaction rt ON r.id = rt.returns_id WHERE r.date BETWEEN \'" +
+    "' GROUP BY products_id) AS apg ON p.id = apg.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS returns FROM mydb.returns r JOIN mydb.returns_transaction rt ON r.id = rt.returns_id WHERE r.date BETWEEN '" +
     `${formattedFirstDayOfMonth}` +
-    "\' AND \'" +
+    "' AND '" +
     `${formattedLastDayOfMonth}` +
-    "\' GROUP BY products_id) AS ret ON p.id = ret.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS loads_out_ntalika FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.cars c ON l.car_id = c.id WHERE l.date BETWEEN \'" +
+    "' GROUP BY products_id) AS ret ON p.id = ret.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS loads_out_ntalika FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.cars c ON l.car_id = c.id WHERE l.date BETWEEN '" +
     `${formattedFirstDayOfMonth}` +
-    "\' AND \'" +
+    "' AND '" +
     `${formattedLastDayOfMonth}` +
-    "\' AND c.isNtalika = 0 GROUP BY products_id) AS lout ON p.id = lout.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS warehouse_destructions FROM mydb.warehouse_destructions wd JOIN mydb.warehouse_destruction_transaction wdt ON wd.id = wdt.warehouse_destructions_id WHERE wd.date BETWEEN \'" +
+    "' AND c.isNtalika = 0 GROUP BY products_id) AS lout ON p.id = lout.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS warehouse_destructions FROM mydb.warehouse_destructions wd JOIN mydb.warehouse_destruction_transaction wdt ON wd.id = wdt.warehouse_destructions_id WHERE wd.date BETWEEN '" +
     `${formattedFirstDayOfMonth}` +
-    "\' AND \'" +
+    "' AND '" +
     `${formattedLastDayOfMonth}` +
-    "\' GROUP BY products_id) AS wde ON p.id = wde.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS car_destructions FROM mydb.car_destructions cd JOIN mydb.car_destruction_transaction cdt ON cd.id = cdt.car_destructions_id WHERE cd.date BETWEEN \'" +
+    "' GROUP BY products_id) AS wde ON p.id = wde.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS car_destructions FROM mydb.car_destructions cd JOIN mydb.car_destruction_transaction cdt ON cd.id = cdt.car_destructions_id WHERE cd.date BETWEEN '" +
     `${formattedFirstDayOfMonth}` +
-    "\' AND \'" +
+    "' AND '" +
     `${formattedLastDayOfMonth}` +
-    "\' GROUP BY products_id) AS cde ON p.id = cde.products_id GROUP BY p.id, p.name";
-console.log(warehouseStatus);
+    "' GROUP BY products_id) AS cde ON p.id = cde.products_id GROUP BY p.id, p.name";
+
   try {
     connection.query(warehouseStatus, (error, results) => {
       if (error) {
         throw error;
       }
-      //const data = results[4];
 
-      res.json({ warehouseStatus:results  });
+      res.json({ warehouseStatus: results });
     });
   } catch (err) {
     const error = new HttpError(
@@ -226,7 +225,89 @@ console.log(warehouseStatus);
   }
 };
 
+const getWareHouseLastMonthStatus = (req, res, next) => {
+  const { year, month } = req.body;
+
+  const warehouseLastMonthStatus =
+    "SELECT p.name AS 'Product Name', apt.quantity AS 'Quantity' FROM mydb.apografi_proionton ap JOIN mydb.apografi_proionton_transaction apt ON ap.apografi_id = apt.apografi_apografi_id JOIN mydb.products p ON apt.products_id = p.id WHERE YEAR(ap.month) = " +
+    `${year}` +
+    " AND MONTH(ap.month) = " +
+    `${month}` +
+    "";
+
+  try {
+    connection.query(warehouseLastMonthStatus, (error, results) => {
+      if (error) {
+        throw error;
+      }
+
+      res.json({ warehouseLastMonthStatus: results });
+    });
+  } catch (err) {
+    const error = new HttpError(
+      "Fetching warehouse last month status failed, please try again."
+    );
+    return next(error);
+  }
+
+  const warehouseLastMonthDestructionsStatus =
+    "SELECT p.name AS 'Product Name', SUM(akt.quantity) AS 'Quantity' FROM mydb.apografi_katastrofon_transaction AS akt JOIN mydb.apografi_katastrofon AS ak ON akt.apografi_katastrofon_apografi_katastrofon_id = ak.apografi_katastrofon_id JOIN mydb.products AS p ON akt.products_id = p.id WHERE MONTH(ak.month) = " +
+    `${month}` +
+    " AND YEAR(ak.month) = " +
+    `${year}` +
+    " GROUP BY p.id, p.name";
+
+  try {
+    connection.query(warehouseLastMonthDestructionsStatus, (error, results) => {
+      if (error) {
+        throw error;
+      }
+
+      res.json({ warehouseLastMonthDestructionsStatus: results });
+    });
+  } catch (err) {
+    const error = new HttpError(
+      "Fetching warehouse last month destructions status failed, please try again."
+    );
+    return next(error);
+  }
+};
+
+const addLoads = (req, res, next) => {
+  const { carId, date, products } = req.body;
+
+  let firstPart =
+    "INSERT INTO mydb.loads (car_id, date) VALUES (" +
+    `${carId}` +
+    ", ' " +
+    `${date}` +
+    " '); SET @last_inserted_load_id = LAST_INSERT_ID(); INSERT INTO mydb.transfers (loads_id, products_id, quantity) VALUES";
+  products.forEach((product) => {
+    const values = `@last_inserted_load_id, ${product.productId}, ${product.quantity}`;
+    const secondPart = " (" + `${values}` + " ),";
+    firstPart = firstPart + secondPart;
+  });
+  const finalPart = firstPart.slice(0, -1) + ";";
+
+  try {
+    connection.query(finalPart, (error, results) => {
+      if (error) {
+        throw error;
+      }
+
+      res.json({ finalPart: results });
+    });
+  } catch (err) {
+    const error = new HttpError(
+      "Fetching warehouse last month destructions status failed, please try again."
+    );
+    return next(error);
+  }
+};
+
 exports.getLoads = getLoads;
 exports.getDestructions = getDestructions;
 exports.getReturns = getReturns;
 exports.getWareHouseStatus = getWareHouseStatus;
+exports.getWareHouseLastMonthStatus = getWareHouseLastMonthStatus;
+exports.addLoads = addLoads;

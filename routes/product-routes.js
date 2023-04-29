@@ -19,4 +19,11 @@ router.post(
 
 router.post("/warehouse-status", productControllers.getWareHouseStatus);
 
+router.post(
+  "/warehouse-last-month-status",
+  productControllers.getWareHouseLastMonthStatus
+);
+
+router.post("/add-loads", productControllers.addLoads);
+
 module.exports = router;
