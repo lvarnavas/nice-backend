@@ -24,11 +24,13 @@ const getLoads = (req, res, next) => {
     if (flag === "totalCarLoads") {
       // [QUERY 2] -> ΦΟΡΤΩΜΑΤΑ ΟΛΩΝ ΤΩΝ ΑΜΑΞΙΩΝ
       loads =
-        "SET @sql = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`')) INTO @sql FROM mydb.products p; SET @sql = CONCAT('SELECT c.pinakida AS Car name, ', @sql, ' FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.products p ON t.products_id = p.id JOIN mydb.cars c ON l.car_id = c.id WHERE l.date BETWEEN \\'" +
-        `${startDate}` +
-        "\\' AND \\'" +
-        `${endDate}` +
-        "\\' GROUP BY c.pinakida'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt";
+    "SET @sql = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`')) INTO @sql FROM mydb.products p; SET @sql = CONCAT('SELECT c.pinakida AS `Car name`, ', @sql, ' FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.products p ON t.products_id = p.id JOIN mydb.cars c ON l.car_id = c.id WHERE l.date BETWEEN \\'" +
+    `${startDate}` +
+    "\\' AND \\'" +
+    `${endDate}` +
+    "\\' GROUP BY c.pinakida'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt";
+
+
     }
   }
 
@@ -53,16 +55,44 @@ const getDestructions = (req, res, next) => {
   const { flag } = req.body;
 
   let destructions;
-  if (carIdParam !== null) {
-    if (flag === "totalCarDestructions") {
+  if (carIdParam === null)
+  {
+    if (flag === "totalCarDestructions")
+    {
       // [QUERY 3] -> ΚΑΤΑΣΤΡΟΦΕΣ ΟΛΩΝ ΤΩΝ ΑΜΑΞΙΩΝ
       destructions =
         "SET @sql_products = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(CASE WHEN cdt.products_id = ', p.id, ' THEN cdt.quantity ELSE 0 END) AS `', p.name, '`')) INTO @sql_products FROM mydb.car_destruction_transaction AS cdt JOIN mydb.products AS p ON cdt.products_id = p.id; SET @sql = CONCAT('SELECT c.pinakida AS car_name, ', @sql_products, ' FROM mydb.car_destructions AS cd JOIN mydb.car_destruction_transaction AS cdt ON cd.id = cdt.car_destructions_id JOIN mydb.cars AS c ON cd.cars_id = c.id JOIN mydb.products AS p ON cdt.products_id = p.id WHERE cd.date BETWEEN \\'" +
         `${startDate}` +
         "\\' AND \\'" +
         `${endDate}` +
-        "\\' GROUP BY cd.cars_id, c.pinakida'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt";
-    } else if (flag === "singleCarDestructions") {
+        "\\' GROUP BY cd.cars_id, c.pinakida'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;";
+	
+    } 
+    else if (flag === "dailyCarDestructions")
+    {
+      // [QUERY 6] -> ΚΑΤΑΣΤΡΟΦΕΣ ΗΜΕΡΑΣ ΑΜΑΞΙΩΝ
+      destructions =
+        "SET @sql_products = NULL;SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(CASE WHEN cdt.products_id = ',p.id,' THEN cdt.quantity ELSE 0 END) AS `',p.name,'`')) INTO @sql_products FROM mydb.car_destruction_transaction AS cdt JOIN mydb.products AS p ON cdt.products_id = p.id;SET @sql = CONCAT('SELECT DATE(cd.date) AS date, ', @sql_products, ' FROM mydb.car_destructions AS cd JOIN mydb.car_destruction_transaction AS cdt ON cd.id = cdt.car_destructions_id JOIN mydb.products AS p ON cdt.products_id = p.id WHERE cd.date BETWEEN \\'" +
+        `${startDate}` +
+        "\\' AND \\'" +
+        `${endDate}` +
+        "\\' GROUP BY DATE(cd.date)');PREPARE stmt FROM @sql;EXECUTE stmt;DEALLOCATE PREPARE stmt;";
+    }
+    else if (flag === "warehouseDestructions")
+    {
+        // [QUERY 5] -> ΚΑΤΑΣΤΡΟΦΕΣ ΑΠΟΘΗΚΗΣ
+      destructions =
+      "SET @sql_products = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(CASE WHEN wdt.products_id = ', p.id, ' THEN wdt.quantity ELSE 0 END) AS `', p.name, '`')) INTO @sql_products FROM mydb.warehouse_destruction_transaction AS wdt JOIN mydb.products AS p ON wdt.products_id = p.id; SET @sql = CONCAT('SELECT wd.date AS Date, ', @sql_products, ' FROM mydb.warehouse_destructions AS wd JOIN mydb.warehouse_destruction_transaction AS wdt ON wd.id = wdt.warehouse_destructions_id JOIN mydb.products AS p ON wdt.products_id = p.id WHERE wd.date BETWEEN \\'" +
+      `${startDate}` +
+      "\\' AND \\'" +
+      `${endDate}` +
+      "\\' GROUP BY wd.id, wd.date');PREPARE stmt FROM @sql;EXECUTE stmt;DEALLOCATE PREPARE stmt";
+    }
+  }
+  else
+  {
+    if (flag === "singleCarDestructions")
+    {
       // [QUERY 4] -> ΚΑΤΑΣΤΡΟΦΕΣ ΕΝΟΣ ΣΥΓΚΕΚΡΙΜΕΝΟΥ ΑΜΑΞΙΟΥ
       destructions =
         "SET @sql = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', cdt.quantity, 0)) AS `', p.name, '`')) INTO @sql FROM mydb.products p; SET @sql = CONCAT('SELECT cd.date, cd.id, ', @sql, ' FROM mydb.car_destructions cd JOIN mydb.car_destruction_transaction cdt ON cd.id = cdt.car_destructions_id JOIN mydb.products p ON cdt.products_id = p.id WHERE cd.cars_id = " +
@@ -72,25 +102,7 @@ const getDestructions = (req, res, next) => {
         "\\' AND \\'" +
         `${endDate}` +
         "\\' GROUP BY cd.date, cd.id ORDER BY cd.date, cd.id'); PREPARE stmt FROM @sql; EXECUTE stmt";
-    }
-  } else {
-    if (flag === "warehouseDestructions") {
-      // [QUERY 5] -> ΚΑΤΑΣΤΡΟΦΕΣ ΑΠΟΘΗΚΗΣ
-      destructions =
-        "SET @sql_products = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(CASE WHEN wdt.products_id = ', p.id, ' THEN wdt.quantity ELSE 0 END) AS `', p.name, '`')) INTO @sql_products FROM mydb.warehouse_destruction_transaction AS wdt JOIN mydb.products AS p ON wdt.products_id = p.id; SET @sql = CONCAT('SELECT wd.date AS Date, ', @sql_products, ' FROM mydb.warehouse_destructions AS wd JOIN mydb.warehouse_destruction_transaction AS wdt ON wd.id = wdt.warehouse_destructions_id JOIN mydb.products AS p ON wdt.products_id = p.id WHERE wd.date BETWEEN \\'" +
-        `${startDate}` +
-        "\\' AND \\'" +
-        `${endDate}` +
-        "\\' GROUP BY wd.id, wd.date');PREPARE stmt FROM @sql;EXECUTE stmt;DEALLOCATE PREPARE stmt";
-    } else if (flag === "dailyCarDestructions") {
-      // [QUERY 6] -> ΚΑΤΑΣΤΡΟΦΕΣ ΗΜΕΡΑΣ ΑΜΑΞΙΩΝ
-      destructions =
-        "SET @sql_products = NULL;SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(CASE WHEN cdt.products_id = ',p.id,' THEN cdt.quantity ELSE 0 END) AS `',p.name,'`')) INTO @sql_products FROM mydb.car_destruction_transaction AS cdt JOIN mydb.products AS p ON cdt.products_id = p.id;SET @sql = CONCAT('SELECT DATE(cd.date) AS date, ', @sql_products, ' FROM mydb.car_destructions AS cd JOIN mydb.car_destruction_transaction AS cdt ON cd.id = cdt.car_destructions_id JOIN mydb.products AS p ON cdt.products_id = p.id WHERE cd.date BETWEEN \\'" +
-        `${startDate}` +
-        "\\' AND \\'" +
-        `${endDate}` +
-        "\\' GROUP BY DATE(cd.date)');PREPARE stmt FROM @sql;EXECUTE stmt;DEALLOCATE PREPARE stmt;";
-    }
+    } 
   }
 
   try {
