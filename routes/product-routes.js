@@ -5,7 +5,7 @@ const productControllers = require("../controllers/product-controllers");
 
 const router = express.Router();
 
-router.get("/loads/:carId?/:startDate/:endDate", productControllers.getLoads);
+router.post("/loads/:carId?/:startDate/:endDate", productControllers.getLoads);
 
 router.post(
   "/destructions/:carId?/:startDate/:endDate",
@@ -17,7 +17,7 @@ router.post(
   productControllers.getReturns
 );
 
-router.post("/warehouse-status", productControllers.getWareHouseStatus);
+router.get("/warehouse-status", productControllers.getWareHouseStatus);
 
 router.post(
   "/warehouse-last-month-status",
