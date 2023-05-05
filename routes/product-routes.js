@@ -24,15 +24,9 @@ router.post(
   productControllers.getWareHouseLastMonthStatus
 );
 
-router.get(
-  "/get-car-list",
-  productControllers.getCarList
-);
+router.get("/get-car-list", productControllers.getCarList);
 
-router.get(
-  "/get-products",
-  productControllers.getProducts
-);
+router.get("/get-products", productControllers.getProducts);
 
 router.post("/add-loads", productControllers.addLoads);
 router.post("/add-car-destructions", productControllers.addCarDestructions);
@@ -41,16 +35,15 @@ router.post(
   "/add-warehouse-destructions",
   productControllers.addWarehouseDestructions
 );
-
 router.post("/add-car-returns", productControllers.addCarReturns);
+
+router.delete("/delete-item/:itemId", productControllers.deleteItem);
 
 router.post("/add-product", productControllers.addProduct);
 
 router.post("/edit-entry", productControllers.editEntry);
 
 router.post("/edit-warehouse-entry", productControllers.editWarehouse);
-
-router.post("/delete-entry", productControllers.deleteEntry);
 
 router.post("/delete-warehouse-entry", productControllers.deleteWarehouse);
 

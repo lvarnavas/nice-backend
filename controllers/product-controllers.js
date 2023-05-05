@@ -23,14 +23,12 @@ const getLoads = (req, res, next) => {
   } else {
     if (flag === "totalCarLoads") {
       // [QUERY 2] -> ΦΟΡΤΩΜΑΤΑ ΟΛΩΝ ΤΩΝ ΑΜΑΞΙΩΝ
-loads =
-    "SET @sql = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`')) INTO @sql FROM mydb.products p; SET @sql = CONCAT('SELECT c.pinakida AS `Pinakida`, ', @sql, ' FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.products p ON t.products_id = p.id JOIN mydb.cars c ON l.car_id = c.id WHERE l.date BETWEEN \\'" +
-    `${startDate}` +
-    "\\' AND \\'" +
-    `${endDate}` +
-    "\\' GROUP BY c.pinakida'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt";
-
-
+      loads =
+        "SET @sql = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`')) INTO @sql FROM mydb.products p; SET @sql = CONCAT('SELECT c.pinakida AS `Pinakida`, ', @sql, ' FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.products p ON t.products_id = p.id JOIN mydb.cars c ON l.car_id = c.id WHERE l.date BETWEEN \\'" +
+        `${startDate}` +
+        "\\' AND \\'" +
+        `${endDate}` +
+        "\\' GROUP BY c.pinakida'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt";
     }
   }
 
@@ -55,20 +53,16 @@ const getDestructions = (req, res, next) => {
   const { flag } = req.body;
 
   let destructions;
-  if (carIdParam === null)
-  {
-    if (flag === "totalCarDestructions")
-    {
+  if (carIdParam === null) {
+    if (flag === "totalCarDestructions") {
       // [QUERY 3] -> ΚΑΤΑΣΤΡΟΦΕΣ ΟΛΩΝ ΤΩΝ ΑΜΑΞΙΩΝ
-      destructions = "SET @sql_products = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('COALESCE(SUM(CASE WHEN cdt.products_id = ', p.id, ' THEN cdt.quantity ELSE 0 END), 0) AS ', p.name, '')) INTO @sql_products FROM mydb.products AS p; SET @sql = CONCAT('SELECT c.pinakida AS car_name, ', @sql_products, ' FROM (SELECT 0) AS dummy LEFT JOIN mydb.car_destructions AS cd ON 1=1 LEFT JOIN mydb.car_destruction_transaction AS cdt ON cd.id = cdt.car_destructions_id LEFT JOIN mydb.cars AS c ON cd.cars_id = c.id LEFT JOIN mydb.products AS p ON cdt.products_id = p.id WHERE cd.date BETWEEN \\'" +
-      `${startDate}` +
-      "\\' AND \\'" +
-      `${endDate}` +
-      "\\'  GROUP BY cd.cars_id, c.pinakida'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;";
-	
-    } 
-    else if (flag === "dailyCarDestructions")
-    {
+      destructions =
+        "SET @sql_products = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('COALESCE(SUM(CASE WHEN cdt.products_id = ', p.id, ' THEN cdt.quantity ELSE 0 END), 0) AS ', p.name, '')) INTO @sql_products FROM mydb.products AS p; SET @sql = CONCAT('SELECT c.pinakida AS car_name, ', @sql_products, ' FROM (SELECT 0) AS dummy LEFT JOIN mydb.car_destructions AS cd ON 1=1 LEFT JOIN mydb.car_destruction_transaction AS cdt ON cd.id = cdt.car_destructions_id LEFT JOIN mydb.cars AS c ON cd.cars_id = c.id LEFT JOIN mydb.products AS p ON cdt.products_id = p.id WHERE cd.date BETWEEN \\'" +
+        `${startDate}` +
+        "\\' AND \\'" +
+        `${endDate}` +
+        "\\'  GROUP BY cd.cars_id, c.pinakida'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;";
+    } else if (flag === "dailyCarDestructions") {
       // [QUERY 6] -> ΚΑΤΑΣΤΡΟΦΕΣ ΗΜΕΡΑΣ ΑΜΑΞΙΩΝ
       destructions =
         "SET @sql_products = NULL;SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(CASE WHEN cdt.products_id = ',p.id,' THEN cdt.quantity ELSE 0 END) AS `',p.name,'`')) INTO @sql_products FROM mydb.car_destruction_transaction AS cdt JOIN mydb.products AS p ON cdt.products_id = p.id;SET @sql = CONCAT('SELECT DATE(cd.date) AS date, ', @sql_products, ' FROM mydb.car_destructions AS cd JOIN mydb.car_destruction_transaction AS cdt ON cd.id = cdt.car_destructions_id JOIN mydb.products AS p ON cdt.products_id = p.id WHERE cd.date BETWEEN \\'" +
@@ -76,23 +70,18 @@ const getDestructions = (req, res, next) => {
         "\\' AND \\'" +
         `${endDate}` +
         "\\' GROUP BY DATE(cd.date)');PREPARE stmt FROM @sql;EXECUTE stmt;DEALLOCATE PREPARE stmt;";
-    }
-    else if (flag === "warehouseDestructions")
-    {
-      console.log(startDate, endDate)
-        // [QUERY 5] -> ΚΑΤΑΣΤΡΟΦΕΣ ΑΠΟΘΗΚΗΣ
-        destructions =
+    } else if (flag === "warehouseDestructions") {
+      console.log(startDate, endDate);
+      // [QUERY 5] -> ΚΑΤΑΣΤΡΟΦΕΣ ΑΠΟΘΗΚΗΣ
+      destructions =
         "SET @sql_products = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(CASE WHEN wdt.products_id = ', p.id, ' THEN wdt.quantity ELSE 0 END) AS `', p.name, '`')) INTO @sql_products FROM mydb.warehouse_destruction_transaction AS wdt JOIN mydb.products AS p ON wdt.products_id = p.id; SET @sql = CONCAT('SELECT wd.date AS `Date`, ', COALESCE(@sql_products, '0 AS `No data`'), ' FROM mydb.warehouse_destructions AS wd LEFT JOIN mydb.warehouse_destruction_transaction AS wdt ON wd.id = wdt.warehouse_destructions_id LEFT JOIN mydb.products AS p ON wdt.products_id = p.id WHERE wd.date BETWEEN \\'" +
         `${startDate}` +
         "\\' AND \\'" +
         `${endDate}` +
         "\\' GROUP BY wd.id, wd.date'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt";
     }
-  }
-  else
-  {
-    if (flag === "singleCarDestructions")
-    {
+  } else {
+    if (flag === "singleCarDestructions") {
       // [QUERY 4] -> ΚΑΤΑΣΤΡΟΦΕΣ ΕΝΟΣ ΣΥΓΚΕΚΡΙΜΕΝΟΥ ΑΜΑΞΙΟΥ
       destructions =
         "SET @sql = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', cdt.quantity, 0)) AS `', p.name, '`')) INTO @sql FROM mydb.products p; SET @sql = CONCAT('SELECT cd.date, cd.id, ', @sql, ' FROM mydb.car_destructions cd JOIN mydb.car_destruction_transaction cdt ON cd.id = cdt.car_destructions_id JOIN mydb.products p ON cdt.products_id = p.id WHERE cd.cars_id = " +
@@ -102,7 +91,7 @@ const getDestructions = (req, res, next) => {
         "\\' AND \\'" +
         `${endDate}` +
         "\\' GROUP BY cd.date, cd.id ORDER BY cd.date, cd.id'); PREPARE stmt FROM @sql; EXECUTE stmt";
-    } 
+    }
   }
 
   try {
@@ -111,7 +100,7 @@ const getDestructions = (req, res, next) => {
         throw error;
       }
       const data = results[4];
-console.log(results);
+      console.log(results);
       res.json({ destructions: data });
     });
   } catch (err) {
@@ -240,7 +229,7 @@ const getWareHouseStatus = (req, res, next) => {
 const getCarList = (req, res, next) => {
   // Get the current date
   // Fri Apr 28 2023 23:36:40 GMT+0200 (Central European Summer Time)
-  
+
   const carslist = "SELECT * FROM mydb.cars;";
 
   try {
@@ -262,7 +251,7 @@ const getCarList = (req, res, next) => {
 const getProducts = (req, res, next) => {
   // Get the current date
   // Fri Apr 28 2023 23:36:40 GMT+0200 (Central European Summer Time)
-  
+
   const productsList = "SELECT * FROM mydb.products;";
 
   try {
@@ -331,250 +320,222 @@ const getWareHouseLastMonthStatus = (req, res, next) => {
 
 const addLoads = (req, res, next) => {
   const { carId, date, products } = req.body;
+  console.log(date);
 
   // First query to insert the new load
-  connection.query("INSERT INTO mydb.loads (car_id, date) VALUES (?, ?)", [carId, date], (error, results) => {
-    if (error) {
-      console.error('Error inserting the load:', error);
-      const newError = new HttpError("Error inserting the load, please try again.");
-      return next(newError);
-    }
-
-    // Get the last inserted load ID
-    const lastInsertedLoadId = results.insertId;
-    console.log('Last inserted load ID:', lastInsertedLoadId);
-
-    // Construct the second query to insert the transfers
-    let transfersQuery = "INSERT INTO mydb.transfers (loads_id, products_id, quantity) VALUES";
-    /* let transfersData = []; */
-  /*   Object.keys(products).forEach((productId) => {
-      const quantity = products[productId];
-      if (quantity > 0) { // Only insert if quantity is greater than 0
-        const values = `(${lastInsertedLoadId}, ${productId}, ${quantity})`;
-        transfersData.push(values);
-      }
-    }); */
-    console.log(products);
-    for (const key in products) {
-      const value = products[key];
-      const values = `${lastInsertedLoadId}, ${key}, ${value}`;
-      const secondPart = " (" + `${values}` + " ),";
-      transfersQuery += secondPart;
-    }
-    transfersQuery = transfersQuery.slice(0, -1) + ";";
-    console.log(transfersQuery);
-    /* if (transfersData.length === 0) {
-      res.json({ finalPart: 'No transfers to insert.' });
-      return;
-    } */
-
-    //transfersQuery += transfersData.join(",") + ";";
-    console.log('Transfers query:', transfersQuery);
-    
-    // Remove the last comma and add a semicolon
-    transfersQuery = transfersQuery.slice(0, -1) + ";";
-
-    console.log('Transaction query:', transfersQuery);
-
-    // Execute the second query to insert the transfers
-    connection.query(transfersQuery, (error, results) => {
+  connection.query(
+    "INSERT INTO mydb.loads (car_id, date) VALUES (?, ?)",
+    [carId, date],
+    (error, results) => {
       if (error) {
-        console.error('Error inserting the transfers:', error);
-        const newError = new HttpError("Error inserting the transfers, please try again.");
+        console.error("Error inserting the load:", error);
+        const newError = new HttpError(
+          "Error inserting the load, please try again."
+        );
         return next(newError);
       }
 
-      console.log('Transaction inserted:', results);
-      res.json({ finalPart: results });
-    });
-  });
+      // Get the last inserted load ID
+      const lastInsertedLoadId = results.insertId;
+
+      // Construct the second query to insert the transfers
+      let transfersQuery =
+        "INSERT INTO mydb.transfers (loads_id, products_id, quantity) VALUES";
+
+      for (const key in products) {
+        const value = products[key];
+        const values = `${lastInsertedLoadId}, ${key}, ${value}`;
+        const secondPart = " (" + `${values}` + " ),";
+        transfersQuery += secondPart;
+      }
+
+      // Remove the last comma and add a semicolon
+      transfersQuery = transfersQuery.slice(0, -1) + ";";
+
+      // Execute the second query to insert the transfers
+      connection.query(transfersQuery, (error, results) => {
+        if (error) {
+          console.error("Error inserting the transfers:", error);
+          const newError = new HttpError(
+            "Error inserting the transfers, please try again."
+          );
+          return next(newError);
+        }
+
+        console.log("Transaction inserted:", results);
+        res.json({ finalPart: results });
+      });
+    }
+  );
 };
-
-
 
 const addCarDestructions = (req, res, next) => {
   const { carId, date, products } = req.body;
 
-  // First query to insert the new load
-  connection.query("INSERT INTO mydb.car_destructions (cars_id, date) VALUES (?, ?)", [carId, date], (error, results) => {
-    if (error) {
-      console.error('Error inserting the destruction:', error);
-      const newError = new HttpError("Error inserting the destruction, please try again.");
-      return next(newError);
-    }
-    console.log(results);
-    // Get the last inserted load ID
-    const lastInsertedDestructionId = results.insertId;
-    console.log('Last inserted Destruction ID:', lastInsertedDestructionId);
-
-    // Construct the second query to insert the car_destruction_transaction
-    let transfersQuery = "INSERT INTO mydb.car_destruction_transaction (car_destructions_id, products_id, quantity) VALUES";
-
-    console.log(products);
-    for (const key in products) {
-      const value = products[key];
-      const values = `${lastInsertedDestructionId}, ${key}, ${value}`;
-      const secondPart = " (" + `${values}` + " ),";
-      transfersQuery += secondPart;
-    }
-    transfersQuery = transfersQuery.slice(0, -1) + ";";
-    console.log(transfersQuery);
-    /* if (transfersData.length === 0) {
-      res.json({ finalPart: 'No transfers to insert.' });
-      return;
-    } */
-
-    //transfersQuery += transfersData.join(",") + ";";
-    console.log('Transaction query:', transfersQuery);
-    
-    // Remove the last comma and add a semicolon
-    transfersQuery = transfersQuery.slice(0, -1) + ";";
-
-    console.log('Transaction query:', transfersQuery);
-
-    // Execute the second query to insert the transfers
-    connection.query(transfersQuery, (error, results) => {
+  connection.query(
+    "INSERT INTO mydb.car_destructions (cars_id, date) VALUES (?, ?)",
+    [carId, date],
+    (error, results) => {
       if (error) {
-        console.error('Error inserting the transfers:', error);
-        const newError = new HttpError("Error inserting the transfers, please try again.");
+        console.error("Error inserting the destruction:", error);
+        const newError = new HttpError(
+          "Error inserting the destruction, please try again."
+        );
         return next(newError);
       }
+      const lastInsertedDestructionId = results.insertId;
 
-      console.log('Transaction inserted:', results);
-      res.json({ finalPart: results });
-    });
-  });
+      // Construct the second query to insert the car_destruction_transaction
+      let transfersQuery =
+        "INSERT INTO mydb.car_destruction_transaction (car_destructions_id, products_id, quantity) VALUES";
+
+      for (const key in products) {
+        const value = products[key];
+        const values = `${lastInsertedDestructionId}, ${key}, ${value}`;
+        const secondPart = " (" + `${values}` + " ),";
+        transfersQuery += secondPart;
+      }
+
+      // Remove the last comma and add a semicolon
+      transfersQuery = transfersQuery.slice(0, -1) + ";";
+
+      // Execute the second query to insert the transfers
+      connection.query(transfersQuery, (error, results) => {
+        if (error) {
+          console.error("Error inserting the transfers:", error);
+          const newError = new HttpError(
+            "Error inserting the transfers, please try again."
+          );
+          return next(newError);
+        }
+
+        res.json({ finalPart: results });
+      });
+    }
+  );
 };
 
 const addWarehouseDestructions = (req, res, next) => {
   const { date, products } = req.body;
-
+  console.log("test", date);
   // First query to insert the new load
-  connection.query("INSERT INTO mydb.warehouse_destructions (date) VALUES (?)", [date], (error, results) => {
-    if (error) {
-      console.error('Error inserting the warehouse destruction:', error);
-      const newError = new HttpError("Error inserting the warehouse destruction, please try again.");
-      return next(newError);
-    }
-    console.log(results);
-    // Get the last inserted load ID
-    const lastInsertedWDestructionId = results.insertId;
-    console.log('Last inserted Destruction ID:', lastInsertedWDestructionId);
-
-    // Construct the second query to insert the car_destruction_transaction
-    let transfersQuery = "INSERT INTO mydb.warehouse_destruction_transaction (warehouse_destructions_id, products_id, quantity) VALUES";
-
-    console.log(products);
-    for (const key in products) {
-      const value = products[key];
-      const values = `${lastInsertedWDestructionId}, ${key}, ${value}`;
-      const secondPart = " (" + `${values}` + " ),";
-      transfersQuery += secondPart;
-    }
-    transfersQuery = transfersQuery.slice(0, -1) + ";";
-    console.log(transfersQuery);
-    /* if (transfersData.length === 0) {
-      res.json({ finalPart: 'No transfers to insert.' });
-      return;
-    } */
-
-    //transfersQuery += transfersData.join(",") + ";";
-    console.log('Transaction query:', transfersQuery);
-    
-    // Remove the last comma and add a semicolon
-    transfersQuery = transfersQuery.slice(0, -1) + ";";
-
-    console.log('Transaction query:', transfersQuery);
-
-    // Execute the second query to insert the transfers
-    connection.query(transfersQuery, (error, results) => {
+  connection.query(
+    "INSERT INTO mydb.warehouse_destructions (date) VALUES (?)",
+    [date],
+    (error, results) => {
       if (error) {
-        console.error('Error inserting the transaction:', error);
-        const newError = new HttpError("Error inserting the transaction, please try again.");
+        console.error("Error inserting the warehouse destruction:", error);
+        const newError = new HttpError(
+          "Error inserting the warehouse destruction, please try again."
+        );
         return next(newError);
       }
+      // Get the last inserted load ID
+      const lastInsertedWDestructionId = results.insertId;
 
-      console.log('Transaction inserted:', results);
-      res.json({ finalPart: results });
-    });
-  });
+      // Construct the second query to insert the car_destruction_transaction
+      let transfersQuery =
+        "INSERT INTO mydb.warehouse_destruction_transaction (warehouse_destructions_id, products_id, quantity) VALUES";
+
+      for (const key in products) {
+        const value = products[key];
+        const values = `${lastInsertedWDestructionId}, ${key}, ${value}`;
+        const secondPart = " (" + `${values}` + " ),";
+        transfersQuery += secondPart;
+      }
+
+      // Remove the last comma and add a semicolon
+      transfersQuery = transfersQuery.slice(0, -1) + ";";
+
+      // Execute the second query to insert the transfers
+      connection.query(transfersQuery, (error, results) => {
+        if (error) {
+          console.error("Error inserting the transaction:", error);
+          const newError = new HttpError(
+            "Error inserting the transaction, please try again."
+          );
+          return next(newError);
+        }
+        res.json({ finalPart: results });
+      });
+    }
+  );
 };
 
 const addCarReturns = (req, res, next) => {
   const { carId, date, products } = req.body;
 
   // First query to insert the new load
-  connection.query("INSERT INTO mydb.returns (car_id, date) VALUES (?, ?)", [carId, date], (error, results) => {
-    if (error) {
-      console.error('Error inserting the return:', error);
-      const newError = new HttpError("Error inserting the return, please try again.");
-      return next(newError);
-    }
-    console.log(results);
-    // Get the last inserted load ID
-    const lastInsertedReturnID = results.insertId;
-    console.log('Last inserted Return ID:', lastInsertedReturnID);
-
-    // Construct the second query to insert the car_destruction_transaction
-    let transfersQuery = "INSERT INTO mydb.returns_transaction (returns_id, products_id, quantity) VALUES";
-
-    console.log(products);
-    for (const key in products) {
-      const value = products[key];
-      const values = `${lastInsertedReturnID}, ${key}, ${value}`;
-      const secondPart = " (" + `${values}` + " ),";
-      transfersQuery += secondPart;
-    }
-    transfersQuery = transfersQuery.slice(0, -1) + ";";
-    console.log(transfersQuery);
-    /* if (transfersData.length === 0) {
-      res.json({ finalPart: 'No transfers to insert.' });
-      return;
-    } */
-
-    //transfersQuery += transfersData.join(",") + ";";
-    console.log('Transaction query:', transfersQuery);
-    
-    // Remove the last comma and add a semicolon
-    transfersQuery = transfersQuery.slice(0, -1) + ";";
-
-    console.log('Transaction query:', transfersQuery);
-
-    // Execute the second query to insert the transfers
-    connection.query(transfersQuery, (error, results) => {
+  connection.query(
+    "INSERT INTO mydb.returns (car_id, date) VALUES (?, ?)",
+    [carId, date],
+    (error, results) => {
       if (error) {
-        console.error('Error inserting the transfers:', error);
-        const newError = new HttpError("Error inserting the transfers, please try again.");
+        console.error("Error inserting the return:", error);
+        const newError = new HttpError(
+          "Error inserting the return, please try again."
+        );
         return next(newError);
       }
+      // Get the last inserted load ID
+      const lastInsertedReturnID = results.insertId;
 
-      console.log('Transaction inserted:', results);
-      res.json({ finalPart: results });
-    });
-  });
+      // Construct the second query to insert the car_destruction_transaction
+      let transfersQuery =
+        "INSERT INTO mydb.returns_transaction (returns_id, products_id, quantity) VALUES";
+
+      for (const key in products) {
+        const value = products[key];
+        const values = `${lastInsertedReturnID}, ${key}, ${value}`;
+        const secondPart = " (" + `${values}` + " ),";
+        transfersQuery += secondPart;
+      }
+
+      // Remove the last comma and add a semicolon
+      transfersQuery = transfersQuery.slice(0, -1) + ";";
+
+      // Execute the second query to insert the transfers
+      connection.query(transfersQuery, (error, results) => {
+        if (error) {
+          console.error("Error inserting the transfers:", error);
+          const newError = new HttpError(
+            "Error inserting the transfers, please try again."
+          );
+          return next(newError);
+        }
+        res.json({ finalPart: results });
+      });
+    }
+  );
 };
 
 const addProduct = (req, res, next) => {
-  const { productName} = req.body;
+  const { productName } = req.body;
 
-  
-  connection.query("INSERT INTO mydb.products (name) VALUES (?)", [productName], (error, results) => {
-    if (error) {
-      console.error('Error inserting the product:', error);
-      const newError = new HttpError("Error inserting the product, please try again.");
-      return next(newError);
+  connection.query(
+    "INSERT INTO mydb.products (name) VALUES (?)",
+    [productName],
+    (error, results) => {
+      if (error) {
+        console.error("Error inserting the product:", error);
+        const newError = new HttpError(
+          "Error inserting the product, please try again."
+        );
+        return next(newError);
+      }
+      console.log(results);
+      // Get the last inserted load ID
+      res.json({ OK: "OK" });
     }
-    console.log(results);
-    // Get the last inserted load ID
-    res.json({ "OK":"OK" });
-})};
+  );
+};
 
 const editEntry = (req, res, next) => {
   const { transactionid, date, products } = req.body;
   const { flag } = req.body;
-  let query = '';
+  let query = "";
   console.log(products);
-  if (flag === 'editload') {
+  if (flag === "editload") {
     let firstPart = `
       BEGIN;
       DELETE FROM mydb.transfers WHERE loads_id = ${transactionid};
@@ -586,7 +547,7 @@ const editEntry = (req, res, next) => {
       firstPart += secondPart;
     });
     query = firstPart.slice(0, -1) + "; COMMIT;";
-  } else if (flag === 'editreturn') {
+  } else if (flag === "editreturn") {
     let firstPart = `
       BEGIN;
       DELETE FROM mydb.returns_transaction WHERE returns_id = ${transactionid};
@@ -598,7 +559,7 @@ const editEntry = (req, res, next) => {
       firstPart += secondPart;
     });
     query = firstPart.slice(0, -1) + "; COMMIT;";
-  } else if (flag === 'editdestruction') {
+  } else if (flag === "editdestruction") {
     let firstPart = `
       BEGIN;
       DELETE FROM mydb.car_destruction_transaction WHERE car_destructions_id = ${transactionid};
@@ -615,76 +576,88 @@ const editEntry = (req, res, next) => {
   if (query) {
     connection.query(query, (error, results) => {
       if (error) {
-        console.error('Error editing the entry:', error);
-        const newError = new HttpError("Error editing the entry, please try again.");
+        console.error("Error editing the entry:", error);
+        const newError = new HttpError(
+          "Error editing the entry, please try again."
+        );
         return next(newError);
       }
       console.log(results);
-      res.json({ "OK": "OK" });
+      res.json({ OK: "OK" });
     });
   } else {
-    const newError = new HttpError("Invalid flag provided, please provide a valid flag.");
+    const newError = new HttpError(
+      "Invalid flag provided, please provide a valid flag."
+    );
     return next(newError);
   }
 };
 
 const editWarehouse = (req, res, next) => {
-  const {warehousedestructionid, date, products } = req.body;
+  const { warehousedestructionid, date, products } = req.body;
   query = "";
 };
 
-const deleteEntry = (req, res, next) => {
-  const { transactionid, date, products } = req.body;
-  const { flag } = req.body;
-  let query = '';
+const deleteItem = (req, res, next) => {
+  const itemId = req.params.itemId;
 
-  if (flag === 'deleteload') {
+  // const { transactionid, date, products } = req.body;
+  const { flag } = req.body;
+  console.log(flag);
+  console.log(itemId);
+  let query = "";
+
+  if (flag === "deleteLoadItem") {
     query = `
       BEGIN;
       DELETE FROM mydb.transfers
-      WHERE loads_id = ?;
+      WHERE loads_id = ${itemId};
       DELETE FROM mydb.loads
-      WHERE id = ?;
+      WHERE id = ${itemId};
       COMMIT;
     `;
-  } else if (flag === 'deletereturn') {
+  } else if (flag === "deleteReturnItem") {
     query = `
       BEGIN;
       DELETE FROM mydb.returns_transaction
-      WHERE returns_id = ?;
+      WHERE returns_id = ${itemId};
       DELETE FROM mydb.returns
-      WHERE id = ?;
+      WHERE id = ${itemId};
       COMMIT;
     `;
-  } else if (flag === 'deletedestruction') {
+  } else if (flag === "deleteDestructionItem") {
     query = `
       BEGIN;
       DELETE FROM mydb.car_destruction_transaction
-      WHERE car_destructions_id = ?;
+      WHERE car_destructions_id = ${itemId};
       DELETE FROM mydb.car_destructions
-      WHERE id = ?;
+      WHERE id = ${itemId};
       COMMIT;
     `;
   }
 
   if (query) {
-    connection.query(query, [transactionid, transactionid], (error, results) => {
+    connection.query(query, (error, results) => {
       if (error) {
-        console.error('Error deleting the entry:', error);
-        const newError = new HttpError("Error deleting the entry, please try again.");
+        console.error("Error deleting the entry:", error);
+        const newError = new HttpError(
+          "Error deleting the entry, please try again."
+        );
         return next(newError);
       }
       console.log(results);
-      res.json({ "OK": "OK" });
+      res.json({ OK: "OK" });
     });
   } else {
-    const newError = new HttpError("Invalid flag provided, please provide a valid flag.");
+    const newError = new HttpError(
+      "Invalid flag provided, please provide a valid flag."
+    );
     return next(newError);
   }
 };
 
 const deleteWarehouse = (req, res, next) => {
-  const {warehousedestructionid, date, products } = req.body;
+  const { warehousedestructionid, date, products } = req.body;
   query = "";
 };
 
@@ -701,6 +674,6 @@ exports.getCarList = getCarList;
 exports.getProducts = getProducts;
 exports.addProduct = addProduct;
 exports.editEntry = editEntry;
-exports.editWarehouse=editWarehouse;
-exports.deleteEntry = deleteEntry;
+exports.editWarehouse = editWarehouse;
+exports.deleteItem = deleteItem;
 exports.deleteWarehouse = deleteWarehouse;
