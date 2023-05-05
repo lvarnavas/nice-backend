@@ -28,6 +28,8 @@ router.get("/get-car-list", productControllers.getCarList);
 
 router.get("/get-products", productControllers.getProducts);
 
+router.get("/get-quantities", productControllers.getQuantities);
+
 router.post("/add-loads", productControllers.addLoads);
 router.post("/add-car-destructions", productControllers.addCarDestructions);
 
@@ -42,8 +44,6 @@ router.delete("/delete-item/:itemId", productControllers.deleteItem);
 router.post("/add-product", productControllers.addProduct);
 
 router.post("/edit-entry", productControllers.editEntry);
-
-router.post("/edit-warehouse-entry", productControllers.editWarehouse);
 
 router.post("/delete-warehouse-entry", productControllers.deleteWarehouse);
 

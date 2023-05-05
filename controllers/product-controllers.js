@@ -270,6 +270,52 @@ const getProducts = (req, res, next) => {
   }
 };
 
+const getQuantities = (req, res, next) => {
+  const {id, flag} = req.body;
+  let sqlquery='';
+  if (flag === 'load') {
+    sqlquery = `
+      SELECT p.id as products_id, COALESCE(t.quantity, 0) as quantity
+      FROM mydb.products p
+      LEFT JOIN mydb.transfers t ON p.id = t.products_id AND t.loads_id = ${id};
+    `;
+  } else if (flag === 'return') {
+    sqlquery = `
+      SELECT p.id as products_id, COALESCE(rt.quantity, 0) as quantity
+      FROM mydb.products p
+      LEFT JOIN mydb.returns_transaction rt ON p.id = rt.products_id AND rt.returns_id = ${id};
+    `;
+  } else if (flag === 'cardestruction') {
+    sqlquery = `
+      SELECT p.id as products_id, COALESCE(cdt.quantity, 0) as quantity
+      FROM mydb.products p
+      LEFT JOIN mydb.car_destruction_transaction cdt ON p.id = cdt.products_id AND cdt.car_destructions_id = ${id};
+    `;
+  } else if (flag === 'warehousedestruction') {
+    sqlquery = `
+      SELECT p.id as products_id, COALESCE(wdt.quantity, 0) as quantity
+      FROM mydb.products p
+      LEFT JOIN mydb.warehouse_destruction_transaction wdt ON p.id = wdt.products_id AND wdt.warehouse_destructions_id = ${id};
+    `;
+  }
+  
+
+  try {
+    connection.query(sqlquery, (error, results) => {
+      if (error) {
+        throw error;
+      }
+
+      res.json({ "results": results });
+    });
+  } catch (err) {
+    const error = new HttpError(
+      "Fetching failed, please try again."
+    );
+    return next(error);
+  }
+};
+
 const getWareHouseLastMonthStatus = (req, res, next) => {
   const { year, month } = req.body;
 
@@ -531,7 +577,7 @@ const addProduct = (req, res, next) => {
 };
 
 const editEntry = (req, res, next) => {
-  const { transactionid, date, products } = req.body;
+  const { transactionid,  products } = req.body;
   const { flag } = req.body;
   let query = "";
   console.log(products);
@@ -593,10 +639,7 @@ const editEntry = (req, res, next) => {
   }
 };
 
-const editWarehouse = (req, res, next) => {
-  const { warehousedestructionid, date, products } = req.body;
-  query = "";
-};
+
 
 const deleteItem = (req, res, next) => {
   const itemId = req.params.itemId;
@@ -674,6 +717,6 @@ exports.getCarList = getCarList;
 exports.getProducts = getProducts;
 exports.addProduct = addProduct;
 exports.editEntry = editEntry;
-exports.editWarehouse = editWarehouse;
 exports.deleteItem = deleteItem;
 exports.deleteWarehouse = deleteWarehouse;
+exports.getQuantities = getQuantities;
