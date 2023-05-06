@@ -632,12 +632,17 @@ const editEntry = (req, res, next) => {
 };
 
 const deleteItem = (req, res, next) => {
+
+  console.log(req.params)
+
   const itemId = req.params.itemId;
+
+  console.log(req.params.itemId);
 
   // const { transactionid, date, products } = req.body;
   const { flag } = req.body;
   let query = "";
-
+console.log(flag);
   if (flag === "deleteLoadItem") {
     query = `
       BEGIN;
@@ -656,7 +661,7 @@ const deleteItem = (req, res, next) => {
       WHERE id = ${itemId};
       COMMIT;
     `;
-  } else if (flag === "deleteDestructionItem") {
+  } else if (flag === "deleteCarDestructionItem") {
     query = `
       BEGIN;
       DELETE FROM mydb.car_destruction_transaction
@@ -665,7 +670,16 @@ const deleteItem = (req, res, next) => {
       WHERE id = ${itemId};
       COMMIT;
     `;
-  }
+  } else if (flag === "deleteWarehouseDestructionItem") {
+    query = `
+    BEGIN;
+    DELETE FROM mydb.warehouse_destruction_transaction
+    WHERE warehouse_destructions_id = ${itemId};
+    DELETE FROM mydb.warehouse_destructions
+    WHERE id = ${itemId};
+    COMMIT;
+    `;
+  } 
 
   if (query) {
     connection.query(query, (error, results) => {
