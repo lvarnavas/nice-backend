@@ -6,6 +6,7 @@ const getLoads = (req, res, next) => {
   const { carId, startDate, endDate } = req.params;
   const carIdParam = carId || null;
   const { flag } = req.body;
+  console.log(req.params);
 
   let loads;
   if (carIdParam !== null) {
@@ -403,12 +404,11 @@ const addLoads = (req, res, next) => {
           return next(newError);
         }
 
-        res.json({ "OK": "OK" });
+        res.json({ OK: "OK" });
       });
     }
   );
 };
-
 
 const addCarDestructions = (req, res, next) => {
   const { carId, date, products } = req.body;
@@ -451,16 +451,15 @@ const addCarDestructions = (req, res, next) => {
           return next(newError);
         }
 
-        res.json({ "OK" : "OK" });
+        res.json({ OK: "OK" });
       });
     }
   );
 };
 
-
 const addWarehouseDestructions = (req, res, next) => {
   const { date, products } = req.body;
-  
+
   // First query to insert the new load
   connection.query(
     "INSERT INTO mydb.warehouse_destructions (date) VALUES (?)",
@@ -499,13 +498,11 @@ const addWarehouseDestructions = (req, res, next) => {
           );
           return next(newError);
         }
-        res.json({ "OK" : "OK" });
+        res.json({ OK: "OK" });
       });
     }
   );
 };
-
-
 
 const addCarReturns = (req, res, next) => {
   const { carId, date, products } = req.body;
@@ -549,12 +546,11 @@ const addCarReturns = (req, res, next) => {
           );
           return next(newError);
         }
-        res.json({ "OK": "OK" });
+        res.json({ OK: "OK" });
       });
     }
   );
 };
-
 
 const addProduct = (req, res, next) => {
   const { productName } = req.body;
@@ -580,10 +576,37 @@ const editEntry = (req, res, next) => {
   const { transactionid, products } = req.body;
   const { flag } = req.body;
   let query = "";
-  console.log(transactionid);
-  console.log(flag);
-  console.log(products);
-  if (flag === "editload") {
+
+  const checkQuery =
+    flag === "editLoad"
+      ? `SELECT EXISTS(SELECT 1 FROM mydb.loads WHERE id = ${transactionid}) as entry_exists;`
+      : flag === "editreturn"
+      ? `SELECT EXISTS(SELECT 1 FROM mydb.returns WHERE id = ${transactionid}) as entry_exists;`
+      : flag === "editcardestruction"
+      ? `SELECT EXISTS(SELECT 1 FROM mydb.car_destructions WHERE id = ${transactionid}) as entry_exists;`
+      : flag === "editwarehousedestruction"
+      ? `SELECT EXISTS(SELECT 1 FROM mydb.warehouse_destructions WHERE id = ${transactionid}) as entry_exists;`
+      : "";
+
+  let exists;
+  if (checkQuery !== "") {
+    connection.query(checkQuery, (error, results) => {
+      if (error) {
+        console.error("Error editing the entry:", error);
+        const newError = new HttpError("This id does not exists.");
+        return next(newError);
+      }
+      exists = results[0].entry_exists;
+      res.json({ OK: "OK" });
+    });
+  } else {
+    const newError = new HttpError("Something went wrong.");
+    return next(newError);
+  }
+
+  console.log(checkQuery);
+
+  if (flag === "editload" && exists) {
     let firstPart = `
       BEGIN;
       DELETE FROM mydb.transfers WHERE loads_id = ${transactionid};
@@ -595,7 +618,7 @@ const editEntry = (req, res, next) => {
       firstPart += secondPart;
     });
     query = firstPart.slice(0, -1) + "; COMMIT;";
-  } else if (flag === "editreturn") {
+  } else if (flag === "editreturn" && exists) {
     let firstPart = `
       BEGIN;
       DELETE FROM mydb.returns_transaction WHERE returns_id = ${transactionid};
@@ -607,7 +630,7 @@ const editEntry = (req, res, next) => {
       firstPart += secondPart;
     });
     query = firstPart.slice(0, -1) + "; COMMIT;";
-  } else if (flag === "editdestruction") {
+  } else if (flag === "editcardestruction" && exists) {
     let firstPart = `
       BEGIN;
       DELETE FROM mydb.car_destruction_transaction WHERE car_destructions_id = ${transactionid};
@@ -619,6 +642,16 @@ const editEntry = (req, res, next) => {
       firstPart += secondPart;
     });
     query = firstPart.slice(0, -1) + "; COMMIT;";
+  } else if (flag === "editwarehousedestruction" && exists) {
+    let firstPart =
+      "BEGIN; DELETE FROM mydb.warehouse_destruction_transaction WHERE warehouse_destructions_id = 5; INSERT INTO mydb.warehouse_destruction_transaction (warehouse_destructions_id , products_id, quantity) VALUES";
+    products.forEach((product) => {
+      const values = `${transactionid}, ${product.productId}, ${product.quantity}`;
+      const secondPart = " (" + `${values}` + " ),";
+      firstPart = firstPart + secondPart;
+    });
+    // ΤΡΟΠΟΠΟΙΗΣΗ ΚΑΤΑΣΤΡΟΦΗΣ ΑΠΟΘΗΚΗΣ
+    query = firstPart.slice(0, -1) + ";";
   }
 
   if (query) {
@@ -641,8 +674,7 @@ const editEntry = (req, res, next) => {
 };
 
 const deleteItem = (req, res, next) => {
-
-  console.log(req.params)
+  console.log(req.params);
 
   const itemId = req.params.itemId;
 
@@ -651,7 +683,7 @@ const deleteItem = (req, res, next) => {
   // const { transactionid, date, products } = req.body;
   const { flag } = req.body;
   let query = "";
-console.log(flag);
+  console.log(flag);
   if (flag === "deleteLoadItem") {
     query = `
       BEGIN;
@@ -688,7 +720,7 @@ console.log(flag);
     WHERE id = ${itemId};
     COMMIT;
     `;
-  } 
+  }
 
   if (query) {
     connection.query(query, (error, results) => {
