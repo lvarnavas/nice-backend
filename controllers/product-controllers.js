@@ -73,7 +73,7 @@ const getDestructions = (req, res, next) => {
     } else if (flag === "warehouseDestructions") {
       // [QUERY 5] -> ΚΑΤΑΣΤΡΟΦΕΣ ΑΠΟΘΗΚΗΣ
       destructions =
-        "SET @sql_products = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(CASE WHEN wdt.products_id = ', p.id, ' THEN wdt.quantity ELSE 0 END) AS `', p.name, '`')) INTO @sql_products FROM mydb.warehouse_destruction_transaction AS wdt JOIN mydb.products AS p ON wdt.products_id = p.id; SET @sql = CONCAT('SELECT wd.date AS `Date`, ', COALESCE(@sql_products, '0 AS `No data`'), ' FROM mydb.warehouse_destructions AS wd LEFT JOIN mydb.warehouse_destruction_transaction AS wdt ON wd.id = wdt.warehouse_destructions_id LEFT JOIN mydb.products AS p ON wdt.products_id = p.id WHERE wd.date BETWEEN \\'" +
+        "SET @sql_products = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(CASE WHEN wdt.products_id = ', p.id, ' THEN wdt.quantity ELSE 0 END) AS `', p.name, '`')) INTO @sql_products FROM mydb.warehouse_destruction_transaction AS wdt JOIN mydb.products AS p ON wdt.products_id = p.id; SET @sql = CONCAT('SELECT wd.id AS `ID`, wd.date AS `Date`, ', @sql_products, ' FROM mydb.warehouse_destructions AS wd JOIN mydb.warehouse_destruction_transaction AS wdt ON wd.id = wdt.warehouse_destructions_id JOIN mydb.products AS p ON wdt.products_id = p.id WHERE wd.date BETWEEN \\'" +
         `${startDate}` +
         "\\' AND \\'" +
         `${endDate}` +
