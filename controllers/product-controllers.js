@@ -71,7 +71,6 @@ const getDestructions = (req, res, next) => {
         `${endDate}` +
         "\\' GROUP BY DATE(cd.date)');PREPARE stmt FROM @sql;EXECUTE stmt;DEALLOCATE PREPARE stmt;";
     } else if (flag === "warehouseDestructions") {
-      console.log(startDate, endDate);
       // [QUERY 5] -> ΚΑΤΑΣΤΡΟΦΕΣ ΑΠΟΘΗΚΗΣ
       destructions =
         "SET @sql_products = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(CASE WHEN wdt.products_id = ', p.id, ' THEN wdt.quantity ELSE 0 END) AS `', p.name, '`')) INTO @sql_products FROM mydb.warehouse_destruction_transaction AS wdt JOIN mydb.products AS p ON wdt.products_id = p.id; SET @sql = CONCAT('SELECT wd.date AS `Date`, ', COALESCE(@sql_products, '0 AS `No data`'), ' FROM mydb.warehouse_destructions AS wd LEFT JOIN mydb.warehouse_destruction_transaction AS wdt ON wd.id = wdt.warehouse_destructions_id LEFT JOIN mydb.products AS p ON wdt.products_id = p.id WHERE wd.date BETWEEN \\'" +
@@ -100,7 +99,6 @@ const getDestructions = (req, res, next) => {
         throw error;
       }
       const data = results[4];
-      console.log(results);
       res.json({ destructions: data });
     });
   } catch (err) {
@@ -271,34 +269,33 @@ const getProducts = (req, res, next) => {
 };
 
 const getQuantities = (req, res, next) => {
-  const {id, flag} = req.body;
-  let sqlquery='';
-  if (flag === 'load') {
+  const { id, flag } = req.body;
+  let sqlquery = "";
+  if (flag === "load") {
     sqlquery = `
       SELECT p.id as products_id, COALESCE(t.quantity, 0) as quantity
       FROM mydb.products p
       LEFT JOIN mydb.transfers t ON p.id = t.products_id AND t.loads_id = ${id};
     `;
-  } else if (flag === 'return') {
+  } else if (flag === "return") {
     sqlquery = `
       SELECT p.id as products_id, COALESCE(rt.quantity, 0) as quantity
       FROM mydb.products p
       LEFT JOIN mydb.returns_transaction rt ON p.id = rt.products_id AND rt.returns_id = ${id};
     `;
-  } else if (flag === 'cardestruction') {
+  } else if (flag === "cardestruction") {
     sqlquery = `
       SELECT p.id as products_id, COALESCE(cdt.quantity, 0) as quantity
       FROM mydb.products p
       LEFT JOIN mydb.car_destruction_transaction cdt ON p.id = cdt.products_id AND cdt.car_destructions_id = ${id};
     `;
-  } else if (flag === 'warehousedestruction') {
+  } else if (flag === "warehousedestruction") {
     sqlquery = `
       SELECT p.id as products_id, COALESCE(wdt.quantity, 0) as quantity
       FROM mydb.products p
       LEFT JOIN mydb.warehouse_destruction_transaction wdt ON p.id = wdt.products_id AND wdt.warehouse_destructions_id = ${id};
     `;
   }
-  
 
   try {
     connection.query(sqlquery, (error, results) => {
@@ -306,12 +303,10 @@ const getQuantities = (req, res, next) => {
         throw error;
       }
 
-      res.json({ "results": results });
+      res.json({ quantities: results });
     });
   } catch (err) {
-    const error = new HttpError(
-      "Fetching failed, please try again."
-    );
+    const error = new HttpError("Fetching failed, please try again.");
     return next(error);
   }
 };
@@ -366,7 +361,6 @@ const getWareHouseLastMonthStatus = (req, res, next) => {
 
 const addLoads = (req, res, next) => {
   const { carId, date, products } = req.body;
-  console.log(date);
 
   // First query to insert the new load
   connection.query(
@@ -408,7 +402,6 @@ const addLoads = (req, res, next) => {
           return next(newError);
         }
 
-        console.log("Transaction inserted:", results);
         res.json({ finalPart: results });
       });
     }
@@ -463,7 +456,6 @@ const addCarDestructions = (req, res, next) => {
 
 const addWarehouseDestructions = (req, res, next) => {
   const { date, products } = req.body;
-  console.log("test", date);
   // First query to insert the new load
   connection.query(
     "INSERT INTO mydb.warehouse_destructions (date) VALUES (?)",
@@ -569,7 +561,6 @@ const addProduct = (req, res, next) => {
         );
         return next(newError);
       }
-      console.log(results);
       // Get the last inserted load ID
       res.json({ OK: "OK" });
     }
@@ -577,9 +568,11 @@ const addProduct = (req, res, next) => {
 };
 
 const editEntry = (req, res, next) => {
-  const { transactionid,  products } = req.body;
+  const { transactionid, products } = req.body;
   const { flag } = req.body;
   let query = "";
+  console.log(transactionid);
+  console.log(flag);
   console.log(products);
   if (flag === "editload") {
     let firstPart = `
@@ -628,7 +621,6 @@ const editEntry = (req, res, next) => {
         );
         return next(newError);
       }
-      console.log(results);
       res.json({ OK: "OK" });
     });
   } else {
@@ -639,15 +631,11 @@ const editEntry = (req, res, next) => {
   }
 };
 
-
-
 const deleteItem = (req, res, next) => {
   const itemId = req.params.itemId;
 
   // const { transactionid, date, products } = req.body;
   const { flag } = req.body;
-  console.log(flag);
-  console.log(itemId);
   let query = "";
 
   if (flag === "deleteLoadItem") {
@@ -688,7 +676,6 @@ const deleteItem = (req, res, next) => {
         );
         return next(newError);
       }
-      console.log(results);
       res.json({ OK: "OK" });
     });
   } else {
