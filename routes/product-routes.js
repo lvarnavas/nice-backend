@@ -37,7 +37,7 @@ router.post(
   "/add-warehouse-destructions",
   productControllers.addWarehouseDestructions
 );
-router.post("/add-car-returns", productControllers.addCarReturns);
+router.post("/add-returns", productControllers.addCarReturns);
 
 router.delete("/delete-item/:itemId", productControllers.deleteItem);
 

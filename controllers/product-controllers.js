@@ -382,9 +382,10 @@ const addLoads = (req, res, next) => {
       let transfersQuery =
         "INSERT INTO mydb.transfers (loads_id, products_id, quantity) VALUES";
 
-      for (const key in products) {
-        const value = products[key];
-        const values = `${lastInsertedLoadId}, ${key}, ${value}`;
+      for (const product of products) {
+        const productId = parseInt(product.productId);
+        const quantity = parseInt(product.quantity);
+        const values = `${lastInsertedLoadId}, ${productId}, ${quantity}`;
         const secondPart = " (" + `${values}` + " ),";
         transfersQuery += secondPart;
       }
@@ -402,11 +403,12 @@ const addLoads = (req, res, next) => {
           return next(newError);
         }
 
-        res.json({ finalPart: results });
+        res.json({ "OK": "OK" });
       });
     }
   );
 };
+
 
 const addCarDestructions = (req, res, next) => {
   const { carId, date, products } = req.body;
@@ -429,8 +431,9 @@ const addCarDestructions = (req, res, next) => {
         "INSERT INTO mydb.car_destruction_transaction (car_destructions_id, products_id, quantity) VALUES";
 
       for (const key in products) {
-        const value = products[key];
-        const values = `${lastInsertedDestructionId}, ${key}, ${value}`;
+        const productId = products[key].productId;
+        const quantity = products[key].quantity;
+        const values = `${lastInsertedDestructionId}, ${productId}, ${quantity}`;
         const secondPart = " (" + `${values}` + " ),";
         transfersQuery += secondPart;
       }
@@ -448,14 +451,16 @@ const addCarDestructions = (req, res, next) => {
           return next(newError);
         }
 
-        res.json({ finalPart: results });
+        res.json({ "OK" : "OK" });
       });
     }
   );
 };
 
+
 const addWarehouseDestructions = (req, res, next) => {
   const { date, products } = req.body;
+  
   // First query to insert the new load
   connection.query(
     "INSERT INTO mydb.warehouse_destructions (date) VALUES (?)",
@@ -475,9 +480,9 @@ const addWarehouseDestructions = (req, res, next) => {
       let transfersQuery =
         "INSERT INTO mydb.warehouse_destruction_transaction (warehouse_destructions_id, products_id, quantity) VALUES";
 
-      for (const key in products) {
-        const value = products[key];
-        const values = `${lastInsertedWDestructionId}, ${key}, ${value}`;
+      for (const product of products) {
+        const { productId, quantity } = product;
+        const values = `${lastInsertedWDestructionId}, ${productId}, ${quantity}`;
         const secondPart = " (" + `${values}` + " ),";
         transfersQuery += secondPart;
       }
@@ -494,11 +499,13 @@ const addWarehouseDestructions = (req, res, next) => {
           );
           return next(newError);
         }
-        res.json({ finalPart: results });
+        res.json({ "OK" : "OK" });
       });
     }
   );
 };
+
+
 
 const addCarReturns = (req, res, next) => {
   const { carId, date, products } = req.body;
@@ -522,9 +529,10 @@ const addCarReturns = (req, res, next) => {
       let transfersQuery =
         "INSERT INTO mydb.returns_transaction (returns_id, products_id, quantity) VALUES";
 
-      for (const key in products) {
-        const value = products[key];
-        const values = `${lastInsertedReturnID}, ${key}, ${value}`;
+      for (const product of products) {
+        const productId = parseInt(product.productId);
+        const quantity = parseInt(product.quantity);
+        const values = `${lastInsertedReturnID}, ${productId}, ${quantity}`;
         const secondPart = " (" + `${values}` + " ),";
         transfersQuery += secondPart;
       }
@@ -541,11 +549,12 @@ const addCarReturns = (req, res, next) => {
           );
           return next(newError);
         }
-        res.json({ finalPart: results });
+        res.json({ "OK": "OK" });
       });
     }
   );
 };
+
 
 const addProduct = (req, res, next) => {
   const { productName } = req.body;
