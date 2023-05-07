@@ -7,19 +7,31 @@ const getLoads = (req, res, next) => {
   const carIdParam = carId || null;
   const { flag } = req.body;
   console.log(req.params);
+  console.log(flag);
+
+  // Validate carId
+  if (carIdParam !== null && isNaN(carIdParam)) {
+    const error = new HttpError('Invalid carId provided, please provide a valid number.');
+    return next(error);
+  }
+
+  // Validate startDate and endDate
+  if (!Date.parse(startDate) || !Date.parse(endDate)) {
+    const error = new HttpError('Invalid startDate or endDate provided, please provide valid dates.');
+    return next(error);
+  }
 
   let loads;
   if (carIdParam !== null) {
     if (flag === "singleCarLoads") {
-      // [QUERY 1] -> ΦΟΡΤΩΜΑΤΑ ΕΝΟΣ ΣΥΓΚΕΚΡΙΜΕΝΟΥ ΑΜΑΞΙΟΥ
       loads =
-        "SET @sql = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`')) INTO @sql FROM mydb.products p; SET @sql = CONCAT('SELECT l.date, l.id, ', @sql, ' FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.products p ON t.products_id = p.id WHERE l.car_id = " +
-        `${carId}` +
-        " AND l.date BETWEEN \\'" +
-        `${startDate}` +
-        " \\' AND \\'" +
-        `${endDate}` +
-        "\\' GROUP BY l.date, l.id ORDER BY l.date, l.id'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt";
+      "SET @sql = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`')) INTO @sql FROM mydb.products p; SET @sql = CONCAT('SELECT l.date, l.id, ', @sql, ' FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.products p ON t.products_id = p.id WHERE l.car_id = " +
+      `${carId}` +
+      " AND l.date BETWEEN \\'" +
+      `${startDate}` +
+      " \\' AND \\'" +
+      `${endDate}` +
+      "\\' GROUP BY l.date, l.id ORDER BY l.date, l.id'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt";
     }
   } else {
     if (flag === "totalCarLoads") {
@@ -33,25 +45,41 @@ const getLoads = (req, res, next) => {
     }
   }
 
-  try {
-    connection.query(loads, (error, results) => {
-      if (error) {
-        throw error;
-      }
-      const data = results[4];
-
-      res.json({ loads: data });
-    });
-  } catch (err) {
-    const error = new HttpError("Fetching loads failed, please try again.");
+  if (!loads) {
+    const error = new HttpError('Invalid flag provided, please provide a valid flag.');
     return next(error);
   }
+
+  connection.query(loads, (error, results) => {
+    if (error) {
+      console.error('Error:', error);
+      const httpError = new HttpError("Fetching loads failed, please try again.");
+      return next(httpError);
+    }
+    
+    const data = results[4];
+    res.json({ loads: data });
+  });
+  
 };
+
 
 const getDestructions = (req, res, next) => {
   const { carId, startDate, endDate } = req.params;
   const carIdParam = carId || null;
   const { flag } = req.body;
+
+  // Validate carId
+  if (carIdParam !== null && isNaN(carIdParam)) {
+    const error = new HttpError('Invalid carId provided, please provide a valid number.');
+    return next(error);
+  }
+
+  // Validate startDate and endDate
+  if (!Date.parse(startDate) || !Date.parse(endDate)) {
+    const error = new HttpError('Invalid startDate or endDate provided, please provide valid dates.');
+    return next(error);
+  }
 
   let destructions;
   if (carIdParam === null) {
@@ -94,20 +122,16 @@ const getDestructions = (req, res, next) => {
     }
   }
 
-  try {
-    connection.query(destructions, (error, results) => {
-      if (error) {
-        throw error;
-      }
-      const data = results[4];
-      res.json({ destructions: data });
-    });
-  } catch (err) {
-    const error = new HttpError(
-      "Fetching destructions failed, please try again."
-    );
-    return next(error);
-  }
+  connection.query(destructions, (error, results) => {
+    if (error) {
+      console.error('Error:', error);
+      const httpError = new HttpError("Fetching destructions failed, please try again.");
+      return next(httpError);
+    }
+    
+    const data = results[4];
+    res.json({ destructions: data });
+  });
 };
 
 const getReturns = (req, res, next) => {
@@ -115,6 +139,17 @@ const getReturns = (req, res, next) => {
   const carIdParam = carId || null;
   const { flag } = req.body;
 
+  // Validate carId
+  if (carIdParam !== null && isNaN(carIdParam)) {
+    const error = new HttpError('Invalid carId provided, please provide a valid number.');
+    return next(error);
+  }
+
+  // Validate startDate and endDate
+  if (!Date.parse(startDate) || !Date.parse(endDate)) {
+    const error = new HttpError('Invalid startDate or endDate provided, please provide valid dates.');
+    return next(error);
+  }
   let returns;
   if (carIdParam !== null) {
     if (flag === "singleCarReturns") {
@@ -140,19 +175,16 @@ const getReturns = (req, res, next) => {
     }
   }
 
-  try {
-    connection.query(returns, (error, results) => {
-      if (error) {
-        throw error;
-      }
-      const data = results[4];
-
-      res.json({ returns: data });
-    });
-  } catch (err) {
-    const error = new HttpError("Fetching returns failed, please try again.");
-    return next(error);
-  }
+  connection.query(returns, (error, results) => {
+    if (error) {
+      console.error('Error:', error);
+      const httpError = new HttpError("Fetching returns failed, please try again.");
+      return next(httpError);
+    }
+    
+    const data = results[4];
+    res.json({ returns: data });
+  });
 };
 
 const getWareHouseStatus = (req, res, next) => {
@@ -209,43 +241,31 @@ const getWareHouseStatus = (req, res, next) => {
     `${formattedLastDayOfMonth}` +
     "' GROUP BY products_id) AS cde ON p.id = cde.products_id GROUP BY p.id, p.name";
 
-  try {
     connection.query(warehouseStatus, (error, results) => {
       if (error) {
-        throw error;
+        console.error('Error:', error);
+        const httpError = new HttpError("Fetching warehouse status failed, please try again.");
+        return next(httpError);
       }
-
+  
       res.json({ warehouseStatus: results });
     });
-  } catch (err) {
-    const error = new HttpError(
-      "Fetching warehouse status failed, please try again."
-    );
-    return next(error);
-  }
 };
 
 const getCarList = (req, res, next) => {
-  // Get the current date
-  // Fri Apr 28 2023 23:36:40 GMT+0200 (Central European Summer Time)
-
   const carslist = "SELECT * FROM mydb.cars;";
 
-  try {
-    connection.query(carslist, (error, results) => {
-      if (error) {
-        throw error;
-      }
+  connection.query(carslist, (error, results) => {
+    if (error) {
+      console.error('Error:', error);
+      const httpError = new HttpError("Fetching cars list status failed, please try again.");
+      return next(httpError);
+    }
 
-      res.json({ carslist: results });
-    });
-  } catch (err) {
-    const error = new HttpError(
-      "Fetching cars list status failed, please try again."
-    );
-    return next(error);
-  }
+    res.json({ carslist: results });
+  });
 };
+
 
 const getProducts = (req, res, next) => {
   // Get the current date
@@ -253,24 +273,27 @@ const getProducts = (req, res, next) => {
 
   const productsList = "SELECT * FROM mydb.products;";
 
-  try {
-    connection.query(productsList, (error, results) => {
-      if (error) {
-        throw error;
-      }
+  connection.query(productsList, (error, results) => {
+    if (error) {
+      console.error('Error:', error);
+      const httpError = new HttpError("Fetching products list status failed, please try again.");
+      return next(httpError);
+    }
 
-      res.json({ productsList: results });
-    });
-  } catch (err) {
-    const error = new HttpError(
-      "Fetching products list status failed, please try again."
-    );
-    return next(error);
-  }
+    res.json({ productsList: results });
+  });
 };
+
 
 const getQuantities = (req, res, next) => {
   const { id, flag } = req.body;
+  
+  // Validate id
+  if (isNaN(id)) {
+    const error = new HttpError('Invalid id provided, please provide a valid number.');
+    return next(error);
+  }
+
   let sqlquery = "";
   if (flag === "load") {
     sqlquery = `
@@ -296,24 +319,31 @@ const getQuantities = (req, res, next) => {
       FROM mydb.products p
       LEFT JOIN mydb.warehouse_destruction_transaction wdt ON p.id = wdt.products_id AND wdt.warehouse_destructions_id = ${id};
     `;
-  }
-
-  try {
-    connection.query(sqlquery, (error, results) => {
-      if (error) {
-        throw error;
-      }
-
-      res.json({ quantities: results });
-    });
-  } catch (err) {
-    const error = new HttpError("Fetching failed, please try again.");
+  } else {
+    const error = new HttpError("Invalid flag provided, please provide a valid flag.");
     return next(error);
   }
+
+  connection.query(sqlquery, (error, results) => {
+    if (error) {
+      console.error('Error:', error);
+      const httpError = new HttpError("Fetching failed, please try again.");
+      return next(httpError);
+    }
+    
+    res.json({ quantities: results });
+  });
 };
+
 
 const getWareHouseLastMonthStatus = (req, res, next) => {
   const { year, month } = req.body;
+
+  // Validate year and month
+  if (isNaN(year) || isNaN(month) || month < 1 || month > 12) {
+    const error = new HttpError('Invalid year or month provided, please provide valid values.');
+    return next(error);
+  }
 
   const warehouseLastMonthStatus =
     "SELECT p.name AS 'Product Name', apt.quantity AS 'Quantity' FROM mydb.apografi_proionton ap JOIN mydb.apografi_proionton_transaction apt ON ap.apografi_id = apt.apografi_apografi_id JOIN mydb.products p ON apt.products_id = p.id WHERE YEAR(ap.month) = " +
@@ -322,20 +352,15 @@ const getWareHouseLastMonthStatus = (req, res, next) => {
     `${month}` +
     "";
 
-  try {
     connection.query(warehouseLastMonthStatus, (error, results) => {
       if (error) {
-        throw error;
+        console.error('Error:', error);
+        const httpError = new HttpError("Fetching warehouse last month status failed, please try again.");
+        return next(httpError);
       }
-
+  
       res.json({ warehouseLastMonthStatus: results });
     });
-  } catch (err) {
-    const error = new HttpError(
-      "Fetching warehouse last month status failed, please try again."
-    );
-    return next(error);
-  }
 
   const warehouseLastMonthDestructionsStatus =
     "SELECT p.name AS 'Product Name', SUM(akt.quantity) AS 'Quantity' FROM mydb.apografi_katastrofon_transaction AS akt JOIN mydb.apografi_katastrofon AS ak ON akt.apografi_katastrofon_apografi_katastrofon_id = ak.apografi_katastrofon_id JOIN mydb.products AS p ON akt.products_id = p.id WHERE MONTH(ak.month) = " +
@@ -344,21 +369,18 @@ const getWareHouseLastMonthStatus = (req, res, next) => {
     `${year}` +
     " GROUP BY p.id, p.name";
 
-  try {
     connection.query(warehouseLastMonthDestructionsStatus, (error, results) => {
       if (error) {
-        throw error;
+        console.error('Error:', error);
+        const httpError = new HttpError("Fetching warehouse last month destructions status failed, please try again.");
+        return next(httpError);
       }
-
+  
       res.json({ warehouseLastMonthDestructionsStatus: results });
     });
-  } catch (err) {
-    const error = new HttpError(
-      "Fetching warehouse last month destructions status failed, please try again."
-    );
-    return next(error);
-  }
-};
+  };
+  
+  
 
 const addLoads = (req, res, next) => {
   const { carId, date, products } = req.body;
@@ -572,6 +594,37 @@ const addProduct = (req, res, next) => {
   );
 };
 
+const checkEntryExist = (req, res, next) => {
+  const { transactionid } = req.body;
+  const { flag } = req.body;
+
+  const checkQuery =
+    flag === "editLoad"
+      ? `SELECT EXISTS(SELECT 1 FROM mydb.loads WHERE id = ${transactionid}) as entry_exists;`
+      : flag === "editreturn"
+      ? `SELECT EXISTS(SELECT 1 FROM mydb.returns WHERE id = ${transactionid}) as entry_exists;`
+      : flag === "editcardestruction"
+      ? `SELECT EXISTS(SELECT 1 FROM mydb.car_destructions WHERE id = ${transactionid}) as entry_exists;`
+      : flag === "editwarehousedestruction"
+      ? `SELECT EXISTS(SELECT 1 FROM mydb.warehouse_destructions WHERE id = ${transactionid}) as entry_exists;`
+      : "";
+
+  let exists;
+  if (checkQuery !== "") {
+    connection.query(checkQuery, (error, results) => {
+      if (error) {
+        console.error("Error editing the entry:", error);
+        const newError = new HttpError("This id does not exists.");
+        return next(newError);
+      }
+      res.json({ "exists": results[0].entry_exists });
+    });
+  } else {
+    const newError = new HttpError("Something went wrong.");
+    return next(newError);
+  }
+};
+
 const editEntry = (req, res, next) => {
   const { transactionid, products } = req.body;
   const { flag } = req.body;
@@ -654,7 +707,7 @@ const editEntry = (req, res, next) => {
     query = firstPart.slice(0, -1) + ";";
   }
 
-  if (query) {
+  if (query && exists) {
     connection.query(query, (error, results) => {
       if (error) {
         console.error("Error editing the entry:", error);
@@ -762,3 +815,4 @@ exports.editEntry = editEntry;
 exports.deleteItem = deleteItem;
 exports.deleteWarehouse = deleteWarehouse;
 exports.getQuantities = getQuantities;
+exports.checkEntryExist = checkEntryExist;

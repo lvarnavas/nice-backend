@@ -28,6 +28,8 @@ router.get("/get-car-list", productControllers.getCarList);
 
 router.get("/get-products", productControllers.getProducts);
 
+router.post("/check-entry", productControllers.checkEntryExist);
+
 router.post("/get-quantities", productControllers.getQuantities);
 
 router.post("/add-loads", productControllers.addLoads);
