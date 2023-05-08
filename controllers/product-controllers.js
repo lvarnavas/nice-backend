@@ -599,7 +599,7 @@ const checkEntryExist = (req, res, next) => {
   const { flag } = req.body;
 
   const checkQuery =
-    flag === "editLoad"
+    flag === "editload"
       ? `SELECT EXISTS(SELECT 1 FROM mydb.loads WHERE id = ${transactionid}) as entry_exists;`
       : flag === "editreturn"
       ? `SELECT EXISTS(SELECT 1 FROM mydb.returns WHERE id = ${transactionid}) as entry_exists;`
@@ -625,41 +625,46 @@ const checkEntryExist = (req, res, next) => {
   }
 };
 
-const editEntry = (req, res, next) => {
+const editEntry = async (req, res, next) => {
   const { transactionid, products } = req.body;
   const { flag } = req.body;
   let query = "";
 
   const checkQuery =
-    flag === "editLoad"
+    // Make sure the flag values are case insensitive
+    flag.toLowerCase() === "editload"
       ? `SELECT EXISTS(SELECT 1 FROM mydb.loads WHERE id = ${transactionid}) as entry_exists;`
-      : flag === "editreturn"
+      : flag.toLowerCase() === "editreturn"
       ? `SELECT EXISTS(SELECT 1 FROM mydb.returns WHERE id = ${transactionid}) as entry_exists;`
-      : flag === "editcardestruction"
+      : flag.toLowerCase() === "editcardestruction"
       ? `SELECT EXISTS(SELECT 1 FROM mydb.car_destructions WHERE id = ${transactionid}) as entry_exists;`
-      : flag === "editwarehousedestruction"
+      : flag.toLowerCase() === "editwarehousedestruction"
       ? `SELECT EXISTS(SELECT 1 FROM mydb.warehouse_destructions WHERE id = ${transactionid}) as entry_exists;`
       : "";
 
-  let exists;
-  if (checkQuery !== "") {
-    connection.query(checkQuery, (error, results) => {
-      if (error) {
-        console.error("Error editing the entry:", error);
-        const newError = new HttpError("This id does not exists.");
-        return next(newError);
+  const checkIfExists = (query) => {
+    return new Promise((resolve, reject) => {
+      if (query !== "") {
+        connection.query(query, (error, results) => {
+          if (error) {
+            console.error("Error editing the entry:", error);
+            const newError = new HttpError("This id does not exist.");
+            reject(newError);
+          } else {
+            resolve(results[0].entry_exists);
+          }
+        });
+      } else {
+        const newError = new HttpError("Something went wrong.");
+        reject(newError);
       }
-      exists = results[0].entry_exists;
-      res.json({ OK: "OK" });
     });
-  } else {
-    const newError = new HttpError("Something went wrong.");
-    return next(newError);
-  }
+  };
 
-  console.log(checkQuery);
+try {
+  const exists = await checkIfExists(checkQuery);
 
-  if (flag === "editload" && exists) {
+  if (flag.toLowerCase() === "editload" && exists) {
     let firstPart = `
       BEGIN;
       DELETE FROM mydb.transfers WHERE loads_id = ${transactionid};
@@ -671,7 +676,7 @@ const editEntry = (req, res, next) => {
       firstPart += secondPart;
     });
     query = firstPart.slice(0, -1) + "; COMMIT;";
-  } else if (flag === "editreturn" && exists) {
+  } else if (flag.toLowerCase() === "editreturn" && exists) {
     let firstPart = `
       BEGIN;
       DELETE FROM mydb.returns_transaction WHERE returns_id = ${transactionid};
@@ -683,7 +688,7 @@ const editEntry = (req, res, next) => {
       firstPart += secondPart;
     });
     query = firstPart.slice(0, -1) + "; COMMIT;";
-  } else if (flag === "editcardestruction" && exists) {
+  } else if (flag.toLowerCase() === "editcardestruction" && exists) {
     let firstPart = `
       BEGIN;
       DELETE FROM mydb.car_destruction_transaction WHERE car_destructions_id = ${transactionid};
@@ -695,16 +700,18 @@ const editEntry = (req, res, next) => {
       firstPart += secondPart;
     });
     query = firstPart.slice(0, -1) + "; COMMIT;";
-  } else if (flag === "editwarehousedestruction" && exists) {
-    let firstPart =
-      "BEGIN; DELETE FROM mydb.warehouse_destruction_transaction WHERE warehouse_destructions_id = 5; INSERT INTO mydb.warehouse_destruction_transaction (warehouse_destructions_id , products_id, quantity) VALUES";
+  } else if (flag.toLowerCase() === "editwarehousedestruction" && exists) {
+    let firstPart = `
+      BEGIN;
+      DELETE FROM mydb.warehouse_destruction_transaction WHERE warehouse_destructions_id = ${transactionid};
+      INSERT INTO mydb.warehouse_destruction_transaction (warehouse_destructions_id, products_id, quantity) VALUES
+    `;
     products.forEach((product) => {
       const values = `${transactionid}, ${product.productId}, ${product.quantity}`;
-      const secondPart = " (" + `${values}` + " ),";
-      firstPart = firstPart + secondPart;
+      const secondPart = `(${values}),`;
+      firstPart += secondPart;
     });
-    // ΤΡΟΠΟΠΟΙΗΣΗ ΚΑΤΑΣΤΡΟΦΗΣ ΑΠΟΘΗΚΗΣ
-    query = firstPart.slice(0, -1) + ";";
+    query = firstPart.slice(0, -1) + "; COMMIT;";
   }
 
   if (query && exists) {
@@ -724,7 +731,12 @@ const editEntry = (req, res, next) => {
     );
     return next(newError);
   }
+} catch (error) {
+  return next(error);
+}
+
 };
+
 
 const deleteItem = (req, res, next) => {
   console.log(req.params);
