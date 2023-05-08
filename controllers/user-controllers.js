@@ -37,7 +37,7 @@ const logIn = (req, res, next) => {
   const sql = "SELECT * FROM users WHERE username = ?";
   connection.query(sql, [username], async (error, results, fields) => {
     if (error) {
-      const err = new Error("Logging in failed, please try again.");
+      const err = new Error("Αδυναμία σύνδεσης. Παρακαλώ προσπαθήστε ξανά.");
       err.status = 500;
       return next(err);
     }
@@ -46,7 +46,7 @@ const logIn = (req, res, next) => {
     console.log(existingUser);
 
     if (!existingUser) {
-      const error = new Error("Invalid credentials, could not log you in");
+      const error = new Error("Λάθος όνομα χρήστη ή κωδικός πρόσβασης.");
       error.status = 403;
       return next(error);
     }
@@ -57,14 +57,14 @@ const logIn = (req, res, next) => {
       console.log(isValidPassword);
     } catch (err) {
       const error = new Error(
-        "Could not log you in, please check your credentials and try again"
+        "Λάθος όνομα χρήστη ή κωδικός πρόσβασης."
       );
       error.status = 500;
       return next(error);
     }
 
     if (!isValidPassword) {
-      const error = new Error("Invalid credentials, could not log you in");
+      const error = new Error("Λάθος όνομα χρήστη ή κωδικός πρόσβασης.");
       error.status = 403;
       return next(error);
     }
@@ -78,7 +78,7 @@ const logIn = (req, res, next) => {
       );
     } catch (err) {
       console.log(err);
-      const error = new Error("Logging in failed, please try again.");
+      const error = new Error("Λάθος όνομα χρήστη ή κωδικός πρόσβασης.");
       error.status = 500;
       return next(error);
     }
