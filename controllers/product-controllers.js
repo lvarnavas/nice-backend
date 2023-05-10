@@ -11,13 +11,17 @@ const getLoads = (req, res, next) => {
 
   // Validate carId
   if (carIdParam !== null && isNaN(carIdParam)) {
-    const error = new HttpError('Invalid carId provided, please provide a valid number.');
+    const error = new HttpError(
+      "Invalid carId provided, please provide a valid number."
+    );
     return next(error);
   }
 
   // Validate startDate and endDate
   if (!Date.parse(startDate) || !Date.parse(endDate)) {
-    const error = new HttpError('Invalid startDate or endDate provided, please provide valid dates.');
+    const error = new HttpError(
+      "Invalid startDate or endDate provided, please provide valid dates."
+    );
     return next(error);
   }
 
@@ -25,13 +29,13 @@ const getLoads = (req, res, next) => {
   if (carIdParam !== null) {
     if (flag === "singleCarLoads") {
       loads =
-      "SET @sql = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`')) INTO @sql FROM mydb.products p; SET @sql = CONCAT('SELECT l.date, l.id, ', @sql, ' FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.products p ON t.products_id = p.id WHERE l.car_id = " +
-      `${carId}` +
-      " AND l.date BETWEEN \\'" +
-      `${startDate}` +
-      " \\' AND \\'" +
-      `${endDate}` +
-      "\\' GROUP BY l.date, l.id ORDER BY l.date, l.id'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt";
+        "SET @sql = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`')) INTO @sql FROM mydb.products p; SET @sql = CONCAT('SELECT l.date, l.id, ', @sql, ' FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.products p ON t.products_id = p.id WHERE l.car_id = " +
+        `${carId}` +
+        " AND l.date BETWEEN \\'" +
+        `${startDate}` +
+        " \\' AND \\'" +
+        `${endDate}` +
+        "\\' GROUP BY l.date, l.id ORDER BY l.date, l.id'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt";
     }
   } else {
     if (flag === "totalCarLoads") {
@@ -46,23 +50,33 @@ const getLoads = (req, res, next) => {
   }
 
   if (!loads) {
-    const error = new HttpError('Invalid flag provided, please provide a valid flag.');
+    const error = new HttpError(
+      "Invalid flag provided, please provide a valid flag."
+    );
     return next(error);
   }
 
-  connection.query(loads, (error, results) => {
-    if (error) {
-      console.error('Error:', error);
-      const httpError = new HttpError("Fetching loads failed, please try again.");
-      return next(httpError);
-    }
-    
-    const data = results[4];
-    res.json({ loads: data });
-  });
-  
-};
+  try {
+    connection.query(loads, (error, results) => {
+      if (error) {
+        console.error("Error:", error);
+        const httpError = new HttpError(
+          "Fetching loads failed, please try again."
+        );
+        return next(httpError);
+      }
 
+      const data = results[4];
+      res.json({ loads: data });
+    });
+  } catch (exception) {
+    console.error("Unexpected error:", exception);
+    const httpError = new HttpError(
+      "An unexpected error occurred, please try again."
+    );
+    next(httpError);
+  }
+};
 
 const getDestructions = (req, res, next) => {
   const { carId, startDate, endDate } = req.params;
@@ -71,13 +85,17 @@ const getDestructions = (req, res, next) => {
 
   // Validate carId
   if (carIdParam !== null && isNaN(carIdParam)) {
-    const error = new HttpError('Invalid carId provided, please provide a valid number.');
+    const error = new HttpError(
+      "Invalid carId provided, please provide a valid number."
+    );
     return next(error);
   }
 
   // Validate startDate and endDate
   if (!Date.parse(startDate) || !Date.parse(endDate)) {
-    const error = new HttpError('Invalid startDate or endDate provided, please provide valid dates.');
+    const error = new HttpError(
+      "Invalid startDate or endDate provided, please provide valid dates."
+    );
     return next(error);
   }
 
@@ -85,12 +103,12 @@ const getDestructions = (req, res, next) => {
   if (carIdParam === null) {
     if (flag === "totalCarDestructions") {
       // [QUERY 3] -> ΚΑΤΑΣΤΡΟΦΕΣ ΟΛΩΝ ΤΩΝ ΑΜΑΞΙΩΝ
-      destructions = "SET @sql = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`')) INTO @sql FROM mydb.products p; SET @sql = CONCAT('SELECT c.pinakida AS `Pinakida`, ', @sql, ' FROM mydb.car_destructions l JOIN mydb.car_destruction_transaction t ON l.id = t.car_destructions_id JOIN mydb.products p ON t.products_id = p.id JOIN mydb.cars c ON l.cars_id = c.id WHERE l.date BETWEEN \\'" +
-      `${startDate}` +
-      "\\' AND \\'" +
-      `${endDate}` +
-      "\\' GROUP BY c.pinakida'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt";
-  
+      destructions =
+        "SET @sql = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`')) INTO @sql FROM mydb.products p; SET @sql = CONCAT('SELECT c.pinakida AS `Pinakida`, ', @sql, ' FROM mydb.car_destructions l JOIN mydb.car_destruction_transaction t ON l.id = t.car_destructions_id JOIN mydb.products p ON t.products_id = p.id JOIN mydb.cars c ON l.cars_id = c.id WHERE l.date BETWEEN \\'" +
+        `${startDate}` +
+        "\\' AND \\'" +
+        `${endDate}` +
+        "\\' GROUP BY c.pinakida'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt";
     } else if (flag === "dailyCarDestructions") {
       // [QUERY 6] -> ΚΑΤΑΣΤΡΟΦΕΣ ΗΜΕΡΑΣ ΑΜΑΞΙΩΝ
       destructions =
@@ -102,11 +120,11 @@ const getDestructions = (req, res, next) => {
     } else if (flag === "warehouseDestructions") {
       // [QUERY 5] -> ΚΑΤΑΣΤΡΟΦΕΣ ΑΠΟΘΗΚΗΣ
       destructions =
-"SET @sql_products = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`')) INTO @sql_products FROM mydb.products p; SET @sql = CONCAT('SELECT wd.id AS ID, wd.date AS Date, ', @sql_products, ' FROM mydb.warehouse_destructions wd JOIN mydb.warehouse_destruction_transaction t ON wd.id = t.warehouse_destructions_id JOIN mydb.products p ON t.products_id = p.id WHERE wd.date BETWEEN \\'" +
-`${startDate}` +
-"\\' AND \\'" +
-`${endDate}` +
-"\\' GROUP BY wd.id, wd.date'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt";
+        "SET @sql_products = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`')) INTO @sql_products FROM mydb.products p; SET @sql = CONCAT('SELECT wd.id AS ID, wd.date AS Date, ', @sql_products, ' FROM mydb.warehouse_destructions wd JOIN mydb.warehouse_destruction_transaction t ON wd.id = t.warehouse_destructions_id JOIN mydb.products p ON t.products_id = p.id WHERE wd.date BETWEEN \\'" +
+        `${startDate}` +
+        "\\' AND \\'" +
+        `${endDate}` +
+        "\\' GROUP BY wd.id, wd.date'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt";
     }
   } else {
     if (flag === "singleCarDestructions") {
@@ -121,18 +139,28 @@ const getDestructions = (req, res, next) => {
         "\\' GROUP BY cd.date, cd.id ORDER BY cd.date, cd.id'); PREPARE stmt FROM @sql; EXECUTE stmt";
     }
   }
-  console.log('test', req.params);
+  console.log("test", req.params);
 
-  connection.query(destructions, (error, results) => {
-    if (error) {
-      console.error('Error:', error);
-      const httpError = new HttpError("Fetching destructions failed, please try again.");
-      return next(httpError);
-    }
-    
-    const data = results[4];
-    res.json({ destructions: data });
-  });
+  try {
+    connection.query(destructions, (error, results) => {
+      if (error) {
+        console.error("Error:", error);
+        const httpError = new HttpError(
+          "Fetching destructions failed, please try again."
+        );
+        return next(httpError);
+      }
+
+      const data = results[4];
+      res.json({ destructions: data });
+    });
+  } catch (err) {
+    console.error("Unexpected error:", err);
+    const unexpectedError = new HttpError(
+      "An unexpected error occurred, please try again."
+    );
+    next(unexpectedError);
+  }
 };
 
 const getReturns = (req, res, next) => {
@@ -142,13 +170,17 @@ const getReturns = (req, res, next) => {
 
   // Validate carId
   if (carIdParam !== null && isNaN(carIdParam)) {
-    const error = new HttpError('Invalid carId provided, please provide a valid number.');
+    const error = new HttpError(
+      "Invalid carId provided, please provide a valid number."
+    );
     return next(error);
   }
 
   // Validate startDate and endDate
   if (!Date.parse(startDate) || !Date.parse(endDate)) {
-    const error = new HttpError('Invalid startDate or endDate provided, please provide valid dates.');
+    const error = new HttpError(
+      "Invalid startDate or endDate provided, please provide valid dates."
+    );
     return next(error);
   }
   let returns;
@@ -168,25 +200,34 @@ const getReturns = (req, res, next) => {
     if (flag === "totalCarReturns") {
       // [QUERY 8] -> ΕΠΙΣΤΡΟΦΕΣ ΟΛΩΝ ΤΩΝ ΑΜΑΞΙΩΝ
       returns =
-  "SET @sql = NULL;SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`')) INTO @sql FROM mydb.products p;SET @sql = CONCAT('SELECT c.pinakida AS `pinakida`, ', @sql, ' FROM mydb.returns l JOIN mydb.returns_transaction t ON l.id = t.returns_id JOIN mydb.products p ON t.products_id = p.id JOIN mydb.cars c ON l.car_id = c.id WHERE l.date BETWEEN \\'" +
-  `${startDate}` +
-  "\\' AND \\'" +
-  `${endDate}` +
-  "\\' GROUP BY c.pinakida');PREPARE stmt FROM @sql;EXECUTE stmt;DEALLOCATE PREPARE stmt";
-
+        "SET @sql = NULL;SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`')) INTO @sql FROM mydb.products p;SET @sql = CONCAT('SELECT c.pinakida AS `pinakida`, ', @sql, ' FROM mydb.returns l JOIN mydb.returns_transaction t ON l.id = t.returns_id JOIN mydb.products p ON t.products_id = p.id JOIN mydb.cars c ON l.car_id = c.id WHERE l.date BETWEEN \\'" +
+        `${startDate}` +
+        "\\' AND \\'" +
+        `${endDate}` +
+        "\\' GROUP BY c.pinakida');PREPARE stmt FROM @sql;EXECUTE stmt;DEALLOCATE PREPARE stmt";
     }
   }
 
-  connection.query(returns, (error, results) => {
-    if (error) {
-      console.error('Error:', error);
-      const httpError = new HttpError("Fetching returns failed, please try again.");
-      return next(httpError);
-    }
-    
-    const data = results[4];
-    res.json({ returns: data });
-  });
+  try {
+    connection.query(returns, (error, results) => {
+      if (error) {
+        console.error("Error:", error);
+        const httpError = new HttpError(
+          "Fetching returns failed, please try again."
+        );
+        return next(httpError);
+      }
+
+      const data = results[4];
+      res.json({ returns: data });
+    });
+  } catch (error) {
+    console.error("Unexpected error:", error);
+    const httpError = new HttpError(
+      "An unexpected error occurred, please try again."
+    );
+    next(httpError);
+  }
 };
 
 const getWareHouseStatus = (req, res, next) => {
@@ -243,31 +284,50 @@ const getWareHouseStatus = (req, res, next) => {
     `${formattedLastDayOfMonth}` +
     "' GROUP BY products_id) AS cde ON p.id = cde.products_id GROUP BY p.id, p.name";
 
+  try {
     connection.query(warehouseStatus, (error, results) => {
       if (error) {
-        console.error('Error:', error);
-        const httpError = new HttpError("Fetching warehouse status failed, please try again.");
+        console.error("Error:", error);
+        const httpError = new HttpError(
+          "Fetching warehouse status failed, please try again."
+        );
         return next(httpError);
       }
-  
+
       res.json({ warehouseStatus: results });
     });
+  } catch (exception) {
+    console.error("Unhandled exception:", exception);
+    const httpError = new HttpError(
+      "An unexpected error occurred, please try again."
+    );
+    next(httpError);
+  }
 };
 
 const getCarList = (req, res, next) => {
   const carslist = "SELECT * FROM mydb.cars;";
 
-  connection.query(carslist, (error, results) => {
-    if (error) {
-      console.error('Error:', error);
-      const httpError = new HttpError("Fetching cars list status failed, please try again.");
-      return next(httpError);
-    }
+  try {
+    connection.query(carslist, (error, results) => {
+      if (error) {
+        console.error("Error:", error);
+        const httpError = new HttpError(
+          "Fetching cars list status failed, please try again."
+        );
+        return next(httpError);
+      }
 
-    res.json({ carslist: results });
-  });
+      res.json({ carslist: results });
+    });
+  } catch (err) {
+    console.error("Caught exception:", err);
+    const httpError = new HttpError(
+      "An unexpected error occurred, please try again."
+    );
+    return next(httpError);
+  }
 };
-
 
 const getProducts = (req, res, next) => {
   // Get the current date
@@ -275,24 +335,35 @@ const getProducts = (req, res, next) => {
 
   const productsList = "SELECT * FROM mydb.products;";
 
-  connection.query(productsList, (error, results) => {
-    if (error) {
-      console.error('Error:', error);
-      const httpError = new HttpError("Fetching products list status failed, please try again.");
-      return next(httpError);
-    }
+  try {
+    connection.query(productsList, (error, results) => {
+      if (error) {
+        console.error("Error:", error);
+        const httpError = new HttpError(
+          "Fetching products list status failed, please try again."
+        );
+        return next(httpError);
+      }
 
-    res.json({ productsList: results });
-  });
+      res.json({ productsList: results });
+    });
+  } catch (error) {
+    console.error("Unexpected error:", error);
+    const httpError = new HttpError(
+      "An unexpected error occurred, please try again."
+    );
+    next(httpError);
+  }
 };
-
 
 const getQuantities = (req, res, next) => {
   const { id, flag } = req.body;
-  
+
   // Validate id
   if (isNaN(id)) {
-    const error = new HttpError('Invalid id provided, please provide a valid number.');
+    const error = new HttpError(
+      "Invalid id provided, please provide a valid number."
+    );
     return next(error);
   }
 
@@ -322,28 +393,39 @@ const getQuantities = (req, res, next) => {
       LEFT JOIN mydb.warehouse_destruction_transaction wdt ON p.id = wdt.products_id AND wdt.warehouse_destructions_id = ${id};
     `;
   } else {
-    const error = new HttpError("Invalid flag provided, please provide a valid flag.");
+    const error = new HttpError(
+      "Invalid flag provided, please provide a valid flag."
+    );
     return next(error);
   }
 
-  connection.query(sqlquery, (error, results) => {
-    if (error) {
-      console.error('Error:', error);
-      const httpError = new HttpError("Fetching failed, please try again.");
-      return next(httpError);
-    }
-    
-    res.json({ quantities: results });
-  });
-};
+  try {
+    connection.query(sqlquery, (error, results) => {
+      if (error) {
+        console.error("Error:", error);
+        const httpError = new HttpError("Fetching failed, please try again.");
+        return next(httpError);
+      }
 
+      res.json({ quantities: results });
+    });
+  } catch (error) {
+    console.error("Caught exception:", error);
+    const httpError = new HttpError(
+      "An unexpected error occurred, please try again."
+    );
+    next(httpError);
+  }
+};
 
 const getWareHouseLastMonthStatus = (req, res, next) => {
   const { year, month } = req.body;
 
   // Validate year and month
   if (isNaN(year) || isNaN(month) || month < 1 || month > 12) {
-    const error = new HttpError('Invalid year or month provided, please provide valid values.');
+    const error = new HttpError(
+      "Invalid year or month provided, please provide valid values."
+    );
     return next(error);
   }
 
@@ -354,15 +436,17 @@ const getWareHouseLastMonthStatus = (req, res, next) => {
     `${month}` +
     "";
 
-    connection.query(warehouseLastMonthStatus, (error, results) => {
-      if (error) {
-        console.error('Error:', error);
-        const httpError = new HttpError("Fetching warehouse last month status failed, please try again.");
-        return next(httpError);
-      }
-  
-      res.json({ warehouseLastMonthStatus: results });
-    });
+  connection.query(warehouseLastMonthStatus, (error, results) => {
+    if (error) {
+      console.error("Error:", error);
+      const httpError = new HttpError(
+        "Fetching warehouse last month status failed, please try again."
+      );
+      return next(httpError);
+    }
+
+    res.json({ warehouseLastMonthStatus: results });
+  });
 
   const warehouseLastMonthDestructionsStatus =
     "SELECT p.name AS 'Product Name', SUM(akt.quantity) AS 'Quantity' FROM mydb.apografi_katastrofon_transaction AS akt JOIN mydb.apografi_katastrofon AS ak ON akt.apografi_katastrofon_apografi_katastrofon_id = ak.apografi_katastrofon_id JOIN mydb.products AS p ON akt.products_id = p.id WHERE MONTH(ak.month) = " +
@@ -371,115 +455,158 @@ const getWareHouseLastMonthStatus = (req, res, next) => {
     `${year}` +
     " GROUP BY p.id, p.name";
 
+  try {
     connection.query(warehouseLastMonthDestructionsStatus, (error, results) => {
       if (error) {
-        console.error('Error:', error);
-        const httpError = new HttpError("Fetching warehouse last month destructions status failed, please try again.");
+        console.error("Error:", error);
+        const httpError = new HttpError(
+          "Fetching warehouse last month destructions status failed, please try again."
+        );
         return next(httpError);
       }
-  
+
       res.json({ warehouseLastMonthDestructionsStatus: results });
     });
-  };
-  
-  
+  } catch (err) {
+    console.error("Unexpected error:", err);
+    const httpError = new HttpError(
+      "An unexpected error occurred, please try again."
+    );
+    next(httpError);
+  }
+};
 
 const addLoads = (req, res, next) => {
   const { carId, date, products } = req.body;
   console.log(req.body);
-  // First query to insert the new load
-  connection.query(
-    "INSERT INTO mydb.loads (car_id, date) VALUES (?, ?)",
-    [carId, date],
-    (error, results) => {
-      if (error) {
-        console.error("Error inserting the load:", error);
-        const newError = new HttpError(
-          "Error inserting the load, please try again."
-        );
-        return next(newError);
-      }
-
-      // Get the last inserted load ID
-      const lastInsertedLoadId = results.insertId;
-
-      // Construct the second query to insert the transfers
-      let transfersQuery =
-        "INSERT INTO mydb.transfers (loads_id, products_id, quantity) VALUES";
-
-      for (const product of products) {
-        const productId = parseInt(product.productId);
-        const quantity = parseInt(product.quantity);
-        const values = `${lastInsertedLoadId}, ${productId}, ${quantity}`;
-        const secondPart = " (" + `${values}` + " ),";
-        transfersQuery += secondPart;
-      }
-
-      // Remove the last comma and add a semicolon
-      transfersQuery = transfersQuery.slice(0, -1) + ";";
-
-      // Execute the second query to insert the transfers
-      connection.query(transfersQuery, (error, results) => {
+  
+  try {
+    // First query to insert the new load
+    connection.query(
+      "INSERT INTO mydb.loads (car_id, date) VALUES (?, ?)",
+      [carId, date],
+      (error, results) => {
         if (error) {
-          console.error("Error inserting the transfers:", error);
+          console.error("Error inserting the load:", error);
           const newError = new HttpError(
-            "Error inserting the transfers, please try again."
+            "Error inserting the load, please try again."
           );
           return next(newError);
         }
 
-        res.json({ OK: "OK" });
-      });
-    }
-  );
+        // Get the last inserted load ID
+        const lastInsertedLoadId = results.insertId;
+
+        // Construct the second query to insert the transfers
+        let transfersQuery =
+          "INSERT INTO mydb.transfers (loads_id, products_id, quantity) VALUES";
+
+        for (const product of products) {
+          const productId = parseInt(product.productId);
+          const quantity = parseInt(product.quantity);
+          const values = `${lastInsertedLoadId}, ${productId}, ${quantity}`;
+          const secondPart = " (" + `${values}` + " ),";
+          transfersQuery += secondPart;
+        }
+
+        // Remove the last comma and add a semicolon
+        transfersQuery = transfersQuery.slice(0, -1) + ";";
+
+        try {
+          // Execute the second query to insert the transfers
+          connection.query(transfersQuery, (error, results) => {
+            if (error) {
+              console.error("Error inserting the transfers:", error);
+              const newError = new HttpError(
+                "Error inserting the transfers, please try again."
+              );
+              return next(newError);
+            }
+
+            res.json({ OK: "OK" });
+          });
+        } catch (err) {
+          console.error("Error executing the transfers query:", err);
+          const newError = new HttpError(
+            "Error executing the transfers query, please try again."
+          );
+          return next(newError);
+        }
+      }
+    );
+  } catch (err) {
+    console.error("Error executing the load query:", err);
+    const newError = new HttpError(
+      "Error executing the load query, please try again."
+    );
+    return next(newError);
+  }
 };
+
 
 const addCarDestructions = (req, res, next) => {
   const { carId, date, products } = req.body;
-  
-  connection.query(
-    "INSERT INTO mydb.car_destructions (cars_id, date) VALUES (?, ?)",
-    [carId, date],
-    (error, results) => {
-      if (error) {
-        console.error("Error inserting the destruction:", error);
-        const newError = new HttpError(
-          "Error inserting the destruction, please try again."
-        );
-        return next(newError);
-      }
-      const lastInsertedDestructionId = results.insertId;
 
-      // Construct the second query to insert the car_destruction_transaction
-      let transfersQuery =
-        "INSERT INTO mydb.car_destruction_transaction (car_destructions_id, products_id, quantity) VALUES";
-
-      for (const key in products) {
-        const productId = products[key].productId;
-        const quantity = products[key].quantity;
-        const values = `${lastInsertedDestructionId}, ${productId}, ${quantity}`;
-        const secondPart = " (" + `${values}` + " ),";
-        transfersQuery += secondPart;
-      }
-
-      // Remove the last comma and add a semicolon
-      transfersQuery = transfersQuery.slice(0, -1) + ";";
-
-      // Execute the second query to insert the transfers
-      connection.query(transfersQuery, (error, results) => {
+  try {
+    connection.query(
+      "INSERT INTO mydb.car_destructions (cars_id, date) VALUES (?, ?)",
+      [carId, date],
+      (error, results) => {
         if (error) {
-          console.error("Error inserting the transfers:", error);
+          console.error("Error inserting the destruction:", error);
           const newError = new HttpError(
-            "Error inserting the transfers, please try again."
+            "Error inserting the destruction, please try again."
           );
           return next(newError);
         }
+        const lastInsertedDestructionId = results.insertId;
 
-        res.json({ OK: "OK" });
-      });
-    }
-  );
+        // Construct the second query to insert the car_destruction_transaction
+        let transfersQuery =
+          "INSERT INTO mydb.car_destruction_transaction (car_destructions_id, products_id, quantity) VALUES";
+
+        for (const key in products) {
+          const productId = products[key].productId;
+          const quantity = products[key].quantity;
+          const values = `${lastInsertedDestructionId}, ${productId}, ${quantity}`;
+          const secondPart = " (" + `${values}` + " ),";
+          transfersQuery += secondPart;
+        }
+
+        // Remove the last comma and add a semicolon
+        transfersQuery = transfersQuery.slice(0, -1) + ";";
+
+        try {
+          // Execute the second query to insert the transfers
+          connection.query(transfersQuery, (error, results) => {
+            if (error) {
+              console.error("Error inserting the transfers:", error);
+              const newError = new HttpError(
+                "Error inserting the transfers, please try again."
+              );
+              return next(newError);
+            }
+
+            res.json({ OK: "OK" });
+          });
+        } catch (error) {
+          console.error("Error executing the second query:", error);
+          const newError = new HttpError(
+            "Error executing the second query, please try again."
+          );
+          return next(newError);
+        }
+      }
+    );
+  } catch (error) {
+    console.error("Error executing the first query:", error);
+    const newError = new HttpError(
+      "Error executing the first query, please try again."
+    );
+    return next(newError);
+  }
 };
+
 
 const addWarehouseDestructions = (req, res, next) => {
   const { date, products } = req.body;
@@ -619,7 +746,7 @@ const checkEntryExist = (req, res, next) => {
         const newError = new HttpError("This id does not exists.");
         return next(newError);
       }
-      res.json({ "exists": results[0].entry_exists });
+      res.json({ exists: results[0].entry_exists });
     });
   } else {
     const newError = new HttpError("Something went wrong.");
@@ -663,82 +790,80 @@ const editEntry = async (req, res, next) => {
     });
   };
 
-try {
-  const exists = await checkIfExists(checkQuery);
+  try {
+    const exists = await checkIfExists(checkQuery);
 
-  if (flag.toLowerCase() === "editload" && exists) {
-    let firstPart = `
+    if (flag.toLowerCase() === "editload" && exists) {
+      let firstPart = `
       BEGIN;
       DELETE FROM mydb.transfers WHERE loads_id = ${transactionid};
       INSERT INTO mydb.transfers (loads_id, products_id, quantity) VALUES
     `;
-    products.forEach((product) => {
-      const values = `${transactionid}, ${product.productId}, ${product.quantity}`;
-      const secondPart = `(${values}),`;
-      firstPart += secondPart;
-    });
-    query = firstPart.slice(0, -1) + "; COMMIT;";
-  } else if (flag.toLowerCase() === "editreturn" && exists) {
-    let firstPart = `
+      products.forEach((product) => {
+        const values = `${transactionid}, ${product.productId}, ${product.quantity}`;
+        const secondPart = `(${values}),`;
+        firstPart += secondPart;
+      });
+      query = firstPart.slice(0, -1) + "; COMMIT;";
+    } else if (flag.toLowerCase() === "editreturn" && exists) {
+      let firstPart = `
       BEGIN;
       DELETE FROM mydb.returns_transaction WHERE returns_id = ${transactionid};
       INSERT INTO mydb.returns_transaction (returns_id, products_id, quantity) VALUES
     `;
-    products.forEach((product) => {
-      const values = `${transactionid}, ${product.productId}, ${product.quantity}`;
-      const secondPart = `(${values}),`;
-      firstPart += secondPart;
-    });
-    query = firstPart.slice(0, -1) + "; COMMIT;";
-  } else if (flag.toLowerCase() === "editcardestruction" && exists) {
-    let firstPart = `
+      products.forEach((product) => {
+        const values = `${transactionid}, ${product.productId}, ${product.quantity}`;
+        const secondPart = `(${values}),`;
+        firstPart += secondPart;
+      });
+      query = firstPart.slice(0, -1) + "; COMMIT;";
+    } else if (flag.toLowerCase() === "editcardestruction" && exists) {
+      let firstPart = `
       BEGIN;
       DELETE FROM mydb.car_destruction_transaction WHERE car_destructions_id = ${transactionid};
       INSERT INTO mydb.car_destruction_transaction (car_destructions_id, products_id, quantity) VALUES
     `;
-    products.forEach((product) => {
-      const values = `${transactionid}, ${product.productId}, ${product.quantity}`;
-      const secondPart = `(${values}),`;
-      firstPart += secondPart;
-    });
-    query = firstPart.slice(0, -1) + "; COMMIT;";
-  } else if (flag.toLowerCase() === "editwarehousedestruction" && exists) {
-    let firstPart = `
+      products.forEach((product) => {
+        const values = `${transactionid}, ${product.productId}, ${product.quantity}`;
+        const secondPart = `(${values}),`;
+        firstPart += secondPart;
+      });
+      query = firstPart.slice(0, -1) + "; COMMIT;";
+    } else if (flag.toLowerCase() === "editwarehousedestruction" && exists) {
+      let firstPart = `
       BEGIN;
       DELETE FROM mydb.warehouse_destruction_transaction WHERE warehouse_destructions_id = ${transactionid};
       INSERT INTO mydb.warehouse_destruction_transaction (warehouse_destructions_id, products_id, quantity) VALUES
     `;
-    products.forEach((product) => {
-      const values = `${transactionid}, ${product.productId}, ${product.quantity}`;
-      const secondPart = `(${values}),`;
-      firstPart += secondPart;
-    });
-    query = firstPart.slice(0, -1) + "; COMMIT;";
-  }
+      products.forEach((product) => {
+        const values = `${transactionid}, ${product.productId}, ${product.quantity}`;
+        const secondPart = `(${values}),`;
+        firstPart += secondPart;
+      });
+      query = firstPart.slice(0, -1) + "; COMMIT;";
+    }
 
-  if (query && exists) {
-    connection.query(query, (error, results) => {
-      if (error) {
-        console.error("Error editing the entry:", error);
-        const newError = new HttpError(
-          "Error editing the entry, please try again."
-        );
-        return next(newError);
-      }
-      res.json({ OK: "OK" });
-    });
-  } else {
-    const newError = new HttpError(
-      "Invalid flag provided, please provide a valid flag."
-    );
-    return next(newError);
+    if (query && exists) {
+      connection.query(query, (error, results) => {
+        if (error) {
+          console.error("Error editing the entry:", error);
+          const newError = new HttpError(
+            "Error editing the entry, please try again."
+          );
+          return next(newError);
+        }
+        res.json({ OK: "OK" });
+      });
+    } else {
+      const newError = new HttpError(
+        "Invalid flag provided, please provide a valid flag."
+      );
+      return next(newError);
+    }
+  } catch (error) {
+    return next(error);
   }
-} catch (error) {
-  return next(error);
-}
-
 };
-
 
 const deleteItem = (req, res, next) => {
   console.log(req.params);
