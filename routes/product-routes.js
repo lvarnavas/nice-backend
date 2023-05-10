@@ -32,7 +32,15 @@ router.post("/check-entry", productControllers.checkEntryExist);
 
 router.post("/get-quantities", productControllers.getQuantities);
 
-router.post("/add-loads", productControllers.addLoads);
+router.post(
+  "/add-loads",
+  [
+    check("carId").not().isEmpty(),
+    check("date").not().isDate(),
+    check("products").not().isEmpty(),
+  ],
+  productControllers.addLoads
+);
 router.post("/add-car-destructions", productControllers.addCarDestructions);
 
 router.post(
