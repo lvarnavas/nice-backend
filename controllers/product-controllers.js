@@ -85,12 +85,12 @@ const getDestructions = (req, res, next) => {
   if (carIdParam === null) {
     if (flag === "totalCarDestructions") {
       // [QUERY 3] -> ΚΑΤΑΣΤΡΟΦΕΣ ΟΛΩΝ ΤΩΝ ΑΜΑΞΙΩΝ
-      destructions =
-        "SET @sql_products = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('COALESCE(SUM(CASE WHEN cdt.products_id = ', p.id, ' THEN cdt.quantity ELSE 0 END), 0) AS ', p.name, '')) INTO @sql_products FROM mydb.products AS p; SET @sql = CONCAT('SELECT c.pinakida AS car_name, ', @sql_products, ' FROM (SELECT 0) AS dummy LEFT JOIN mydb.car_destructions AS cd ON 1=1 LEFT JOIN mydb.car_destruction_transaction AS cdt ON cd.id = cdt.car_destructions_id LEFT JOIN mydb.cars AS c ON cd.cars_id = c.id LEFT JOIN mydb.products AS p ON cdt.products_id = p.id WHERE cd.date BETWEEN \\'" +
-        `${startDate}` +
-        "\\' AND \\'" +
-        `${endDate}` +
-        "\\'  GROUP BY cd.cars_id, c.pinakida'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;";
+      destructions = "SET @sql = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`')) INTO @sql FROM mydb.products p; SET @sql = CONCAT('SELECT c.pinakida AS `Pinakida`, ', @sql, ' FROM mydb.car_destructions l JOIN mydb.car_destruction_transaction t ON l.id = t.car_destructions_id JOIN mydb.products p ON t.products_id = p.id JOIN mydb.cars c ON l.cars_id = c.id WHERE l.date BETWEEN \\'" +
+      `${startDate}` +
+      "\\' AND \\'" +
+      `${endDate}` +
+      "\\' GROUP BY c.pinakida'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt";
+  
     } else if (flag === "dailyCarDestructions") {
       // [QUERY 6] -> ΚΑΤΑΣΤΡΟΦΕΣ ΗΜΕΡΑΣ ΑΜΑΞΙΩΝ
       destructions =
@@ -102,11 +102,11 @@ const getDestructions = (req, res, next) => {
     } else if (flag === "warehouseDestructions") {
       // [QUERY 5] -> ΚΑΤΑΣΤΡΟΦΕΣ ΑΠΟΘΗΚΗΣ
       destructions =
-        "SET @sql_products = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(CASE WHEN wdt.products_id = ', p.id, ' THEN wdt.quantity ELSE 0 END) AS `', p.name, '`')) INTO @sql_products FROM mydb.warehouse_destruction_transaction AS wdt JOIN mydb.products AS p ON wdt.products_id = p.id; SET @sql = CONCAT('SELECT wd.id AS `ID`, wd.date AS `Date`, ', @sql_products, ' FROM mydb.warehouse_destructions AS wd JOIN mydb.warehouse_destruction_transaction AS wdt ON wd.id = wdt.warehouse_destructions_id JOIN mydb.products AS p ON wdt.products_id = p.id WHERE wd.date BETWEEN \\'" +
-        `${startDate}` +
-        "\\' AND \\'" +
-        `${endDate}` +
-        "\\' GROUP BY wd.id, wd.date'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt";
+"SET @sql_products = NULL; SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`')) INTO @sql_products FROM mydb.products p; SET @sql = CONCAT('SELECT wd.id AS ID, wd.date AS Date, ', @sql_products, ' FROM mydb.warehouse_destructions wd JOIN mydb.warehouse_destruction_transaction t ON wd.id = t.warehouse_destructions_id JOIN mydb.products p ON t.products_id = p.id WHERE wd.date BETWEEN \\'" +
+`${startDate}` +
+"\\' AND \\'" +
+`${endDate}` +
+"\\' GROUP BY wd.id, wd.date'); PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt";
     }
   } else {
     if (flag === "singleCarDestructions") {
@@ -121,6 +121,7 @@ const getDestructions = (req, res, next) => {
         "\\' GROUP BY cd.date, cd.id ORDER BY cd.date, cd.id'); PREPARE stmt FROM @sql; EXECUTE stmt";
     }
   }
+  console.log('test', req.params);
 
   connection.query(destructions, (error, results) => {
     if (error) {
@@ -167,11 +168,12 @@ const getReturns = (req, res, next) => {
     if (flag === "totalCarReturns") {
       // [QUERY 8] -> ΕΠΙΣΤΡΟΦΕΣ ΟΛΩΝ ΤΩΝ ΑΜΑΞΙΩΝ
       returns =
-        "SET @sql = NULL;SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', rt.quantity, 0)) AS `', p.name, '`')) INTO @sql FROM mydb.products p;SET @sql = CONCAT('SELECT c.pinakida, ', @sql, ' FROM mydb.returns r JOIN mydb.returns_transaction rt ON r.id = rt.returns_id JOIN mydb.products p ON rt.products_id = p.id JOIN mydb.cars c ON r.car_id = c.id WHERE r.date BETWEEN \\'" +
-        `${startDate}` +
-        "\\' AND \\'" +
-        `${endDate}` +
-        "\\' GROUP BY r.car_id, c.pinakida ORDER BY r.car_id');PREPARE stmt FROM @sql;EXECUTE stmt;DEALLOCATE PREPARE stmt";
+  "SET @sql = NULL;SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`')) INTO @sql FROM mydb.products p;SET @sql = CONCAT('SELECT c.pinakida AS `pinakida`, ', @sql, ' FROM mydb.returns l JOIN mydb.returns_transaction t ON l.id = t.returns_id JOIN mydb.products p ON t.products_id = p.id JOIN mydb.cars c ON l.car_id = c.id WHERE l.date BETWEEN \\'" +
+  `${startDate}` +
+  "\\' AND \\'" +
+  `${endDate}` +
+  "\\' GROUP BY c.pinakida');PREPARE stmt FROM @sql;EXECUTE stmt;DEALLOCATE PREPARE stmt";
+
     }
   }
 
@@ -384,7 +386,7 @@ const getWareHouseLastMonthStatus = (req, res, next) => {
 
 const addLoads = (req, res, next) => {
   const { carId, date, products } = req.body;
-
+  console.log(req.body);
   // First query to insert the new load
   connection.query(
     "INSERT INTO mydb.loads (car_id, date) VALUES (?, ?)",
@@ -434,7 +436,7 @@ const addLoads = (req, res, next) => {
 
 const addCarDestructions = (req, res, next) => {
   const { carId, date, products } = req.body;
-
+  
   connection.query(
     "INSERT INTO mydb.car_destructions (cars_id, date) VALUES (?, ?)",
     [carId, date],
@@ -481,7 +483,7 @@ const addCarDestructions = (req, res, next) => {
 
 const addWarehouseDestructions = (req, res, next) => {
   const { date, products } = req.body;
-
+  console.log(req.body);
   // First query to insert the new load
   connection.query(
     "INSERT INTO mydb.warehouse_destructions (date) VALUES (?)",
