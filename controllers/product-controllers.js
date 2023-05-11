@@ -305,6 +305,67 @@ const getWareHouseStatus = (req, res, next) => {
   }
 };
 
+const getTotalProductsDestructionsStatus = (req, res, next) => {
+  // Get the current date
+  // Fri Apr 28 2023 23:36:40 GMT+0200 (Central European Summer Time)
+  const today = new Date();
+
+  // Get the first day of the current month
+  // Sat Apr 01 2023 00:00:00 GMT+0200 (Central European Summer Time)
+  const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  // '2023-03-31'
+  const formattedFirstDayOfMonth = firstDayOfMonth.toISOString().slice(0, 10);
+
+  // Get the last day of the current month
+  // Sun Apr 30 2023 00:00:00 GMT+0200 (Central European Summer Time)
+  const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  // '2023-04-29'
+  const formattedLastDayOfMonth = lastDayOfMonth.toISOString().slice(0, 10);
+
+  // Get the first day of the previous month
+  // Wed Mar 01 2023 00:00:00 GMT+0100 (Central European Standard Time)
+  const firstDayOfPrevMonth = new Date(
+    today.getFullYear(),
+    today.getMonth() - 1,
+    1
+  );
+  //'2023-02-28'
+  const formattedFirstDayOfPrevMonth = firstDayOfPrevMonth
+    .toISOString()
+    .slice(0, 10);
+
+  const totalDestructionsQuery =
+    "SELECT product_id, product_name, SUM(quantity) as 'total_quantity' FROM (SELECT products.id AS 'product_id', products.name AS 'product_name', SUM(warehouse_destruction_transaction.quantity) AS 'quantity' FROM products LEFT JOIN warehouse_destruction_transaction ON products.id = warehouse_destruction_transaction.products_id LEFT JOIN warehouse_destructions ON warehouse_destruction_transaction.warehouse_destructions_id = warehouse_destructions.id WHERE warehouse_destructions.date BETWEEN  '" +
+    `${formattedFirstDayOfMonth}` +
+    "' AND '" +
+    `${formattedLastDayOfMonth}` +
+    "'  GROUP BY products.id, products.name UNION ALL SELECT products.id AS 'product_id', products.name AS 'product_name', SUM(car_destruction_transaction.quantity) AS 'quantity' FROM products LEFT JOIN car_destruction_transaction ON products.id = car_destruction_transaction.products_id LEFT JOIN car_destructions ON car_destruction_transaction.car_destructions_id = car_destructions.id WHERE car_destructions.date BETWEEN  '" +
+    `${formattedFirstDayOfMonth}` +
+    "' AND '" +
+    `${formattedLastDayOfMonth}` +
+    "'  GROUP BY products.id, products.name) AS combined GROUP BY product_id, product_name;";
+
+  try {
+    connection.query(totalDestructionsQuery, (error, results) => {
+      if (error) {
+        console.error("Error:", error);
+        const httpError = new HttpError(
+          "Fetching warehouse status failed, please try again."
+        );
+        return next(httpError);
+      }
+
+      res.json({ totalDestructionsQuery: results });
+    });
+  } catch (exception) {
+    console.error("Unhandled exception:", exception);
+    const httpError = new HttpError(
+      "An unexpected error occurred, please try again."
+    );
+    next(httpError);
+  }
+};
+
 const getCarList = (req, res, next) => {
   const carslist = "SELECT * FROM mydb.cars;";
 
@@ -479,7 +540,7 @@ const getWareHouseLastMonthStatus = (req, res, next) => {
 const addLoads = (req, res, next) => {
   const { carId, date, products } = req.body;
   console.log(req.body);
-  
+
   try {
     // First query to insert the new load
     connection.query(
@@ -543,7 +604,6 @@ const addLoads = (req, res, next) => {
   }
 };
 
-
 const addCarDestructions = (req, res, next) => {
   const { carId, date, products } = req.body;
 
@@ -606,7 +666,6 @@ const addCarDestructions = (req, res, next) => {
     return next(newError);
   }
 };
-
 
 const addWarehouseDestructions = (req, res, next) => {
   const { date, products } = req.body;
@@ -955,3 +1014,4 @@ exports.deleteItem = deleteItem;
 exports.deleteWarehouse = deleteWarehouse;
 exports.getQuantities = getQuantities;
 exports.checkEntryExist = checkEntryExist;
+exports.getTotalProductsDestructionsStatus = getTotalProductsDestructionsStatus;

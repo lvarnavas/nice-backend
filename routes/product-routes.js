@@ -19,6 +19,11 @@ router.post(
 
 router.get("/warehouse-status", productControllers.getWareHouseStatus);
 
+router.get(
+  "/total-products-destructions-status",
+  productControllers.getTotalProductsDestructionsStatus
+);
+
 router.post(
   "/warehouse-last-month-status",
   productControllers.getWareHouseLastMonthStatus
