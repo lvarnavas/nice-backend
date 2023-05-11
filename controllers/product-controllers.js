@@ -355,7 +355,7 @@ const getTotalProductsDestructionsStatus = (req, res, next) => {
         return next(httpError);
       }
 
-      res.json({ totalDestructionsQuery: results });
+      res.json({ totalProductsDestructions: results });
     });
   } catch (exception) {
     console.error("Unhandled exception:", exception);
