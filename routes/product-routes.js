@@ -56,10 +56,6 @@ router.post("/add-returns", productControllers.addCarReturns);
 
 router.delete("/delete-item/:itemId", productControllers.deleteItem);
 
-router.post("/add-product", productControllers.addProduct);
-
 router.patch("/edit-entry", productControllers.editEntry);
-
-router.post("/delete-warehouse-entry", productControllers.deleteWarehouse);
 
 module.exports = router;
