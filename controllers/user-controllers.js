@@ -9,8 +9,6 @@ const logIn = async (req, res, next) => {
   const sql = "SELECT * FROM users WHERE username = ?";
   const [existingUser] = await connection.query(sql, [username]);
 
-  // const existingUser = results[0];
-  console.log(existingUser[0].password);
   if (!existingUser) {
     const error = new Error("Λάθος όνομα χρήστη ή κωδικός πρόσβασης.");
     error.status = 403;
