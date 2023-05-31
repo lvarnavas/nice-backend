@@ -2,6 +2,8 @@ const connection = require("../database/mysql");
 
 const HttpError = require("../models/http-error");
 
+const dateFormatter = require("../shared/dateFormatter");
+
 const getLoads = async (req, res, next) => {
   const { carId, startDate, endDate } = req.params;
   const carIdParam = carId || null;
@@ -200,6 +202,9 @@ const getReturns = async (req, res, next) => {
 };
 
 const getWareHouseStatus = async (req, res, next) => {
+  const { firstDayCurrentMonth, lastDayCurrentMonth } = dateFormatter();
+  console.log(firstDayCurrentMonth, lastDayCurrentMonth);
+
   const today = new Date();
   const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
   const formattedFirstDayOfMonth = firstDayOfMonth.toISOString().slice(0, 10);
