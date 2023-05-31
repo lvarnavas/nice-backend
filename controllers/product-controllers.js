@@ -202,8 +202,9 @@ const getReturns = async (req, res, next) => {
 };
 
 const getWareHouseStatus = async (req, res, next) => {
-  const { firstDayCurrentMonth, lastDayCurrentMonth } = dateFormatter();
-  console.log(firstDayCurrentMonth, lastDayCurrentMonth);
+  const { firstDayCurrentMonth, lastDayCurrentMonth, firstDayPrevMonth } =
+    dateFormatter();
+  console.log(firstDayCurrentMonth, lastDayCurrentMonth, firstDayPrevMonth);
 
   const today = new Date();
   const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);

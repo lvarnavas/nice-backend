@@ -25,9 +25,31 @@ function dateFormatter() {
   const formattedLastDay =
     lastDayParts[2] + "-" + lastDayParts[1] + "-" + lastDayParts[0];
 
+  // Get the first day of the previous month
+  const firstDayPrevMonth = new Date(
+    date.getFullYear(),
+    date.getMonth() - 1,
+    1
+  );
+  const firstDayPrevMonthLocal = new Intl.DateTimeFormat("el-GR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const firstDayPrevMonthWithSlashes =
+    firstDayPrevMonthLocal.format(firstDayPrevMonth);
+  const firstDayPrevMonthParts = firstDayPrevMonthWithSlashes.split("/");
+  const formattedFirstDayPrevMonth =
+    firstDayPrevMonthParts[2] +
+    "-" +
+    firstDayPrevMonthParts[1] +
+    "-" +
+    firstDayPrevMonthParts[0];
+
   return {
     firstDayCurrentMonth: formattedFirstDay,
     lastDayCurrentMonth: formattedLastDay,
+    firstDayPrevMonth: formattedFirstDayPrevMonth,
   };
 }
 
