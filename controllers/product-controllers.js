@@ -38,7 +38,7 @@ const getLoads = async (req, res, next) => {
         `${startDate}` +
         "\\' AND \\'" +
         `${endDate}` +
-        "\\' GROUP BY c.pinakida'); " +
+        "\\' GROUP BY c.pinakida ORDER BY MAX(l.id) DESC'); " + // Use MAX(l.id) to ensure you're using the most recent load for a given pinakida.
         "PREPARE stmt FROM @sql; " +
         "EXECUTE stmt; " +
         "DEALLOCATE PREPARE stmt";
@@ -204,50 +204,34 @@ const getReturns = async (req, res, next) => {
 const getWareHouseStatus = async (req, res, next) => {
   const { firstDayCurrentMonth, lastDayCurrentMonth, firstDayPrevMonth } =
     dateFormatter();
-  console.log(firstDayCurrentMonth, lastDayCurrentMonth, firstDayPrevMonth);
-
-  const today = new Date();
-  const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-  const formattedFirstDayOfMonth = firstDayOfMonth.toISOString().slice(0, 10);
-  const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-  const formattedLastDayOfMonth = lastDayOfMonth.toISOString().slice(0, 10);
-  const firstDayOfPrevMonth = new Date(
-    today.getFullYear(),
-    today.getMonth() - 1,
-    1
-  );
-  const formattedFirstDayOfPrevMonth = firstDayOfPrevMonth
-    .toISOString()
-    .slice(0, 10);
 
   const warehouseStatus =
     "SELECT p.id AS product_id, p.name AS product_name, COALESCE(SUM(loads_in_ntalika), 0) + COALESCE(SUM(apografi_proionton), 0) + COALESCE(SUM(returns), 0) - COALESCE(SUM(loads_out_ntalika), 0) - COALESCE(SUM(warehouse_destructions), 0) - COALESCE(SUM(car_destructions), 0) AS current_quantity FROM mydb.products p LEFT JOIN (SELECT products_id, SUM(quantity) AS loads_in_ntalika FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.cars c ON l.car_id = c.id WHERE l.date BETWEEN '" +
-    `${formattedFirstDayOfMonth}` +
+    `${firstDayCurrentMonth}` +
     "' AND '" +
-    `${formattedLastDayOfMonth}` +
+    `${lastDayCurrentMonth}` +
     "' AND c.isNtalika = 1 GROUP BY products_id) AS lin ON p.id = lin.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS apografi_proionton FROM mydb.apografi_proionton ap JOIN mydb.apografi_proionton_transaction apt ON ap.apografi_id = apt.apografi_apografi_id WHERE ap.month = '" +
-    `${formattedFirstDayOfPrevMonth}` +
+    `${firstDayPrevMonth}` +
     "' GROUP BY products_id) AS apg ON p.id = apg.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS returns FROM mydb.returns r JOIN mydb.returns_transaction rt ON r.id = rt.returns_id WHERE r.date BETWEEN '" +
-    `${formattedFirstDayOfMonth}` +
+    `${firstDayCurrentMonth}` +
     "' AND '" +
-    `${formattedLastDayOfMonth}` +
+    `${lastDayCurrentMonth}` +
     "' GROUP BY products_id) AS ret ON p.id = ret.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS loads_out_ntalika FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.cars c ON l.car_id = c.id WHERE l.date BETWEEN '" +
-    `${formattedFirstDayOfMonth}` +
+    `${firstDayCurrentMonth}` +
     "' AND '" +
-    `${formattedLastDayOfMonth}` +
+    `${lastDayCurrentMonth}` +
     "' AND c.isNtalika = 0 GROUP BY products_id) AS lout ON p.id = lout.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS warehouse_destructions FROM mydb.warehouse_destructions wd JOIN mydb.warehouse_destruction_transaction wdt ON wd.id = wdt.warehouse_destructions_id WHERE wd.date BETWEEN '" +
-    `${formattedFirstDayOfMonth}` +
+    `${firstDayCurrentMonth}` +
     "' AND '" +
-    `${formattedLastDayOfMonth}` +
+    `${lastDayCurrentMonth}` +
     "' GROUP BY products_id) AS wde ON p.id = wde.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS car_destructions FROM mydb.car_destructions cd JOIN mydb.car_destruction_transaction cdt ON cd.id = cdt.car_destructions_id WHERE cd.date BETWEEN '" +
-    `${formattedFirstDayOfMonth}` +
+    `${firstDayCurrentMonth}` +
     "' AND '" +
-    `${formattedLastDayOfMonth}` +
+    `${lastDayCurrentMonth}` +
     "' GROUP BY products_id) AS cde ON p.id = cde.products_id GROUP BY p.id, p.name";
 
   try {
     const [results] = await connection.query(warehouseStatus);
-
     res.json({ warehouseStatus: results });
   } catch (err) {
     console.log(err);
@@ -257,21 +241,17 @@ const getWareHouseStatus = async (req, res, next) => {
 };
 
 const getTotalProductsDestructionsStatus = async (req, res, next) => {
-  const today = new Date();
-  const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-  const formattedFirstDayOfMonth = firstDayOfMonth.toISOString().slice(0, 10);
-  const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-  const formattedLastDayOfMonth = lastDayOfMonth.toISOString().slice(0, 10);
+  const { firstDayCurrentMonth, lastDayCurrentMonth } = dateFormatter();
 
   const totalDestructionsQuery =
     "SELECT product_id, product_name, SUM(quantity) as 'total_quantity' FROM (SELECT products.id AS 'product_id', products.name AS 'product_name', SUM(warehouse_destruction_transaction.quantity) AS 'quantity' FROM products LEFT JOIN warehouse_destruction_transaction ON products.id = warehouse_destruction_transaction.products_id LEFT JOIN warehouse_destructions ON warehouse_destruction_transaction.warehouse_destructions_id = warehouse_destructions.id WHERE warehouse_destructions.date BETWEEN  '" +
-    `${formattedFirstDayOfMonth}` +
+    `${firstDayCurrentMonth}` +
     "' AND '" +
-    `${formattedLastDayOfMonth}` +
+    `${lastDayCurrentMonth}` +
     "'  GROUP BY products.id, products.name UNION ALL SELECT products.id AS 'product_id', products.name AS 'product_name', SUM(car_destruction_transaction.quantity) AS 'quantity' FROM products LEFT JOIN car_destruction_transaction ON products.id = car_destruction_transaction.products_id LEFT JOIN car_destructions ON car_destruction_transaction.car_destructions_id = car_destructions.id WHERE car_destructions.date BETWEEN  '" +
-    `${formattedFirstDayOfMonth}` +
+    `${firstDayCurrentMonth}` +
     "' AND '" +
-    `${formattedLastDayOfMonth}` +
+    `${lastDayCurrentMonth}` +
     "'  GROUP BY products.id, products.name) AS combined GROUP BY product_id, product_name;";
 
   try {
