@@ -1,5 +1,2 @@
 node_modules/
 public
-.env
-.nodemon
-database/mysql.js
