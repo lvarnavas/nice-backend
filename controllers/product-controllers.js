@@ -205,6 +205,47 @@ const getWareHouseStatus = async (req, res, next) => {
   const { firstDayCurrentMonth, lastDayCurrentMonth, firstDayPrevMonth } =
     dateFormatter();
 
+  const partsCurrentMonth = firstDayCurrentMonth.split("-");
+  const currentMonth = partsCurrentMonth[1];
+
+  const partsPrevMonth = firstDayPrevMonth.split("-");
+  const prevMonth = partsPrevMonth[1];
+  const prevYear = partsPrevMonth[0];
+  const prevMonthCheck =
+    prevMonth === "01"
+      ? 12
+      : (parseInt(prevMonth, 10) - 1)
+          .toString()
+          .padStart(prevMonth.length, "0");
+
+  //CHECK ston pinaka "apografi_proionton" an yparxei kataxorisi pou to pedio "month" tha exei tin imerominia tou proigoumenou mina
+  const checkPrevMonthApografi =
+    "SELECT COUNT(*) AS data FROM `mydb`.`apografi_proionton` WHERE YEAR(`month`) = " +
+    `${prevYear}` +
+    " AND MONTH(`month`) = " +
+    `${prevMonth}`;
+  //an den yparxei, tote tin ypologizei prosthetei
+  //athroisma olon ton fortomaton klp tou current mina prosthetontas tin apografi tou proigoumenou
+
+  const calculateApografi =
+    "INSERT INTO `mydb`.`apografi_proionton` (`month`) VALUES ('" +
+    firstDayPrevMonth +
+    "'); INSERT INTO `mydb`.`apografi_proionton_transaction` (`apografi_apografi_id`, `products_id`, `quantity`) SELECT (SELECT `apografi_id` FROM `mydb`.`apografi_proionton` WHERE `month` = '" +
+    firstDayPrevMonth +
+    "'), p.`id`, (IFNULL((SELECT SUM(t.quantity) FROM `mydb`.`transfers` t JOIN `mydb`.`loads` l ON t.`loads_id` = l.`id` JOIN `mydb`.`cars` c ON l.`car_id` = c.`id` WHERE c.`isNtalika` = 1 AND MONTH(l.`date`) = " +
+    prevMonth +
+    " AND t.`products_id` = p.`id`), 0) - IFNULL((SELECT SUM(t.quantity) FROM `mydb`.`transfers` t JOIN `mydb`.`loads` l ON t.`loads_id` = l.`id` JOIN `mydb`.`cars` c ON l.`car_id` = c.`id` WHERE c.`isNtalika` = 0 AND MONTH(l.`date`) = " +
+    prevMonth +
+    " AND t.`products_id` = p.`id`), 0) - IFNULL((SELECT SUM(dt.quantity) FROM `mydb`.`car_destruction_transaction` dt JOIN `mydb`.`car_destructions` d ON dt.`car_destructions_id` = d.`id` WHERE MONTH(d.`date`) = " +
+    prevMonth +
+    " AND dt.`products_id` = p.`id`), 0) + IFNULL((SELECT SUM(rt.quantity) FROM `mydb`.`returns_transaction` rt JOIN `mydb`.`returns` r ON rt.`returns_id` = r.`id` WHERE MONTH(r.`date`) = " +
+    prevMonth +
+    " AND rt.`products_id` = p.`id`), 0) - IFNULL((SELECT SUM(wt.quantity) FROM `mydb`.`warehouse_destruction_transaction` wt JOIN `mydb`.`warehouse_destructions` w ON wt.`warehouse_destructions_id` = w.`id` WHERE MONTH(w.`date`) = " +
+    prevMonth +
+    " AND wt.`products_id` = p.`id`), 0) + IFNULL((SELECT SUM(apt.quantity) FROM `mydb`.`apografi_proionton_transaction` apt JOIN `mydb`.`apografi_proionton` ap ON apt.`apografi_apografi_id` = ap.`apografi_id` WHERE MONTH(ap.`month`) = " +
+    prevMonthCheck +
+    " AND apt.`products_id` = p.`id`), 0)) AS `product_sum` FROM `mydb`.`products` p;";
+
   const warehouseStatus =
     "SELECT p.id AS product_id, p.name AS product_name, COALESCE(SUM(loads_in_ntalika), 0) + COALESCE(SUM(apografi_proionton), 0) + COALESCE(SUM(returns), 0) - COALESCE(SUM(loads_out_ntalika), 0) - COALESCE(SUM(warehouse_destructions), 0) - COALESCE(SUM(car_destructions), 0) AS current_quantity FROM mydb.products p LEFT JOIN (SELECT products_id, SUM(quantity) AS loads_in_ntalika FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.cars c ON l.car_id = c.id WHERE l.date BETWEEN '" +
     `${firstDayCurrentMonth}` +
@@ -231,6 +272,15 @@ const getWareHouseStatus = async (req, res, next) => {
     "' GROUP BY products_id) AS cde ON p.id = cde.products_id GROUP BY p.id, p.name";
 
   try {
+    const [prevMonthApografiResult] = await connection.query(
+      checkPrevMonthApografi
+    );
+    if (prevMonthApografiResult[0].data === 0) {
+      //YPOLOGISMOS APOGRAFIS PROIGOUMENOU MINA
+      const [resultsCalculationApografis] = await connection.query(
+        calculateApografi
+      );
+    }
     const [results] = await connection.query(warehouseStatus);
     res.json({ warehouseStatus: results });
   } catch (err) {
