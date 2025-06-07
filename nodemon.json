@@ -1,9 +1,9 @@
 {
   "env": {
-      "DB_USER": "",
-      "DB_PASSWORD": "",
-      "DB_NAME": "",
-      "DB_HOST": "",
-      "PORT": ""
+      "DB_USER": "root",
+      "DB_PASSWORD": "password",
+      "DB_NAME": "mydb",
+      "DB_HOST": "localhost",
+      "PORT": "5001"
   }
 }
