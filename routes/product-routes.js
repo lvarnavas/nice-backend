@@ -58,4 +58,6 @@ router.delete("/delete-item/:itemId", productControllers.deleteItem);
 
 router.patch("/edit-entry", productControllers.editEntry);
 
+router.post("/generate-report", productControllers.generateReport);
+
 module.exports = router;

@@ -780,6 +780,171 @@ const deleteItem = async (req, res, next) => {
   }
 };
 
+const generateReport = async (req, res, next) => {
+  const { formData } = req.body;
+  const PDFDocument = require('pdfkit');
+  const fs = require('fs');
+  const path = require('path');
+
+  try {
+    // Get current date for filename
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    const dateString = `${day}-${month}-${year}`;
+    
+    // Create a new PDF document with UTF-8 encoding
+    const doc = new PDFDocument({
+      size: 'A4',
+      info: {
+        Title: 'Warehouse Report',
+        Author: 'NICE',
+        Subject: 'Warehouse Status Report',
+        Producer: 'NICE System',
+        CreationDate: now
+      },
+      lang: 'el-GR',
+      displayTitle: true,
+      margin: 50
+    });
+
+    const filename = `warehouse_report_${dateString}.pdf`;
+    const filePath = path.join(__dirname, '..', 'reports', filename);
+
+    // Ensure reports directory exists
+    if (!fs.existsSync(path.join(__dirname, '..', 'reports'))) {
+      fs.mkdirSync(path.join(__dirname, '..', 'reports'));
+    }
+
+    // If file exists, append a number to the filename
+    let counter = 1;
+    let finalFilePath = filePath;
+    while (fs.existsSync(finalFilePath)) {
+      const newFilename = `warehouse_report_${dateString}_${counter}.pdf`;
+      finalFilePath = path.join(__dirname, '..', 'reports', newFilename);
+      counter++;
+    }
+
+    // Pipe PDF to a file
+    doc.pipe(fs.createWriteStream(finalFilePath));
+
+    // Get warehouse status
+    const warehouseStatusQuery = "SELECT p.id as product_id, p.name as product_name, COALESCE(SUM(loads_in_ntalika), 0) + COALESCE(SUM(apografi_proionton), 0) + COALESCE(SUM(returns), 0) - COALESCE(SUM(loads_out_ntalika), 0) - COALESCE(SUM(warehouse_destructions), 0) - COALESCE(SUM(car_destructions), 0) AS current_quantity FROM mydb.products p LEFT JOIN (SELECT products_id, SUM(quantity) AS loads_in_ntalika FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.cars c ON l.car_id = c.id WHERE c.isNtalika = 1 GROUP BY products_id) AS lin ON p.id = lin.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS apografi_proionton FROM mydb.apografi_proionton ap JOIN mydb.apografi_proionton_transaction apt ON ap.apografi_id = apt.apografi_apografi_id GROUP BY products_id) AS apg ON p.id = apg.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS returns FROM mydb.returns r JOIN mydb.returns_transaction rt ON r.id = rt.returns_id GROUP BY products_id) AS ret ON p.id = ret.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS loads_out_ntalika FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.cars c ON l.car_id = c.id WHERE c.isNtalika = 0 GROUP BY products_id) AS lout ON p.id = lout.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS warehouse_destructions FROM mydb.warehouse_destructions wd JOIN mydb.warehouse_destruction_transaction wdt ON wd.id = wdt.warehouse_destructions_id GROUP BY products_id) AS wde ON p.id = wde.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS car_destructions FROM mydb.car_destructions cd JOIN mydb.car_destruction_transaction cdt ON cd.id = cdt.car_destructions_id GROUP BY products_id) AS cde ON p.id = cde.products_id GROUP BY p.id, p.name";
+    
+    const [warehouseStatus] = await connection.query(warehouseStatusQuery);
+
+    // Register Arial font with Greek support
+    const arialFontPath = require.resolve('@canvas-fonts/arial/Arial.ttf');
+    doc.registerFont('Arial', arialFontPath);
+    doc.font('Arial');
+
+    // Add logo
+    const logoPath = path.join(__dirname, '..', 'assets', 'nice-logo.png');
+    if (fs.existsSync(logoPath)) {
+      // Get page dimensions
+      const pageWidth = doc.page.width;
+      const logoWidth = 180;
+      const xPosition = (pageWidth - logoWidth) / 2;
+      
+      doc.image(logoPath, xPosition, 50, {
+        width: logoWidth
+      });
+    }
+
+    // Add title
+    doc.moveDown(6);
+    doc.fontSize(24).text('Warehouse Report', { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(10).text(dateString, { align: 'center' });
+    doc.moveDown(2);
+
+    // Table settings
+    const startX = 50;
+    const startY = doc.y;
+    const colWidth = (doc.page.width - 100) / 4;
+    const rowHeight = 30;
+    const textStartY = startY + 10;
+
+    // Draw table headers with background and borders
+    doc.lineWidth(1);
+    
+    // Draw header background
+    doc.rect(startX, startY, doc.page.width - 100, rowHeight).fill('#f5f5f5');
+    
+    // Draw header text
+    doc.fillColor('black');
+    doc.fontSize(12);
+    ['Προϊόν', 'Τιμές αποθήκης', 'Τιμές πλατφόρμας', 'Απόκλιση'].forEach((header, i) => {
+      doc.text(header, startX + (i * colWidth), textStartY, {
+        width: colWidth,
+        align: 'center'
+      });
+    });
+
+    // Draw header borders
+    doc.rect(startX, startY, doc.page.width - 100, rowHeight).stroke();
+    for (let i = 1; i < 4; i++) {
+      doc.moveTo(startX + (i * colWidth), startY)
+         .lineTo(startX + (i * colWidth), startY + rowHeight)
+         .stroke();
+    }
+
+    // Draw table content
+    let currentY = startY + rowHeight;
+    warehouseStatus.forEach((item) => {
+      const userQty = Number(formData[item.product_id] || 0);
+      const actualQty = Number(item.current_quantity || 0);
+      const diff = userQty - actualQty;
+
+      // Draw row borders
+      doc.rect(startX, currentY, doc.page.width - 100, rowHeight).stroke();
+      for (let i = 1; i < 4; i++) {
+        doc.moveTo(startX + (i * colWidth), currentY)
+           .lineTo(startX + (i * colWidth), currentY + rowHeight)
+           .stroke();
+      }
+
+      // Draw row content
+      doc.fontSize(10);
+      doc.fillColor('black');
+      doc.text(item.product_name, startX, currentY + 10, { width: colWidth, align: 'center' });
+      doc.text(userQty.toString(), startX + colWidth, currentY + 10, { width: colWidth, align: 'center' });
+      doc.text(actualQty.toString(), startX + (2 * colWidth), currentY + 10, { width: colWidth, align: 'center' });
+      doc.fillColor(diff !== 0 ? 'red' : 'black');
+      doc.text(diff.toString(), startX + (3 * colWidth), currentY + 10, { width: colWidth, align: 'center' });
+      doc.fillColor('black');
+
+      currentY += rowHeight;
+    });
+
+    // Draw bottom border of the last row
+    doc.moveTo(startX, currentY)
+       .lineTo(startX + doc.page.width - 100, currentY)
+       .stroke();
+
+    // Finalize PDF
+    doc.end();
+
+    // Wait for the file to be written
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Send file
+    res.download(finalFilePath, path.basename(finalFilePath), (err) => {
+      if (err) {
+        console.error(err);
+        const error = new HttpError('Error downloading the report.', 500);
+        return next(error);
+      }
+    });
+
+  } catch (err) {
+    console.log(err);
+    const error = new HttpError('Generating report failed.', 500);
+    return next(error);
+  }
+};
+
 exports.getLoads = getLoads;
 exports.getDestructions = getDestructions;
 exports.getReturns = getReturns;
@@ -796,3 +961,4 @@ exports.deleteItem = deleteItem;
 exports.getQuantities = getQuantities;
 exports.checkEntryExist = checkEntryExist;
 exports.getTotalProductsDestructionsStatus = getTotalProductsDestructionsStatus;
+exports.generateReport = generateReport;
