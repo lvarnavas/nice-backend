@@ -945,6 +945,266 @@ const generateReport = async (req, res, next) => {
   }
 };
 
+const generateDateRangeReport = async (req, res, next) => {
+  const { startDate, endDate } = req.params;
+  const carId = 10; // Fixed car ID as per requirements
+
+  try {
+    // Loads for car 10 in the date range
+    const loadsQuery = `
+      SELECT p.id as product_id, p.name as product_name, 
+             COALESCE(SUM(t.quantity), 0) as total_loads
+      FROM mydb.products p
+      LEFT JOIN mydb.transfers t ON p.id = t.products_id
+      LEFT JOIN mydb.loads l ON t.loads_id = l.id
+      WHERE l.car_id = ? AND l.date BETWEEN ? AND ?
+      GROUP BY p.id, p.name
+      ORDER BY p.id`;
+
+    // Car destructions for car 10 in the date range (for deviation)
+    const car10DestructionsQuery = `
+      SELECT p.id as product_id, p.name as product_name,
+             COALESCE(SUM(cdt.quantity), 0) as total_destructions
+      FROM mydb.products p
+      LEFT JOIN mydb.car_destruction_transaction cdt ON p.id = cdt.products_id
+      LEFT JOIN mydb.car_destructions cd ON cdt.car_destructions_id = cd.id
+      WHERE cd.cars_id = ? AND cd.date BETWEEN ? AND ?
+      GROUP BY p.id, p.name
+      ORDER BY p.id`;
+
+    // All car destructions for all cars in the date range (for total destructions)
+    const allCarDestructionsQuery = `
+      SELECT p.id as product_id, p.name as product_name,
+             COALESCE(SUM(cdt.quantity), 0) as total_car_destructions
+      FROM mydb.products p
+      LEFT JOIN mydb.car_destruction_transaction cdt ON p.id = cdt.products_id
+      LEFT JOIN mydb.car_destructions cd ON cdt.car_destructions_id = cd.id
+      WHERE cd.date BETWEEN ? AND ?
+      GROUP BY p.id, p.name
+      ORDER BY p.id`;
+
+    // All warehouse destructions in the date range
+    const warehouseDestructionsQuery = `
+      SELECT p.id as product_id, p.name as product_name,
+             COALESCE(SUM(wdt.quantity), 0) as total_warehouse_destructions
+      FROM mydb.products p
+      LEFT JOIN mydb.warehouse_destruction_transaction wdt ON p.id = wdt.products_id
+      LEFT JOIN mydb.warehouse_destructions wd ON wdt.warehouse_destructions_id = wd.id
+      WHERE wd.date BETWEEN ? AND ?
+      GROUP BY p.id, p.name
+      ORDER BY p.id`;
+
+    // Execute all queries
+    const [loadsResults] = await connection.query(loadsQuery, [carId, startDate, endDate]);
+    const [car10DestructionsResults] = await connection.query(car10DestructionsQuery, [carId, startDate, endDate]);
+    const [allCarDestructionsResults] = await connection.query(allCarDestructionsQuery, [startDate, endDate]);
+    const [warehouseDestructionsResults] = await connection.query(warehouseDestructionsQuery, [startDate, endDate]);
+
+    // Create a map to store the final results
+    const productTotals = new Map();
+
+    // Process loads
+    loadsResults.forEach(load => {
+      productTotals.set(load.product_id, {
+        name: load.product_name,
+        total: load.total_loads,
+        car10Destructions: 0,
+        allCarDestructions: 0,
+        warehouseDestructions: 0
+      });
+    });
+
+    // Process car 10 destructions (for deviation)
+    car10DestructionsResults.forEach(destruction => {
+      const existing = productTotals.get(destruction.product_id) || {
+        name: destruction.product_name,
+        total: 0,
+        car10Destructions: 0,
+        allCarDestructions: 0,
+        warehouseDestructions: 0
+      };
+      existing.car10Destructions = destruction.total_destructions;
+      productTotals.set(destruction.product_id, existing);
+    });
+
+    // Process all car destructions (for total destructions)
+    allCarDestructionsResults.forEach(destruction => {
+      const existing = productTotals.get(destruction.product_id) || {
+        name: destruction.product_name,
+        total: 0,
+        car10Destructions: 0,
+        allCarDestructions: 0,
+        warehouseDestructions: 0
+      };
+      existing.allCarDestructions = destruction.total_car_destructions;
+      productTotals.set(destruction.product_id, existing);
+    });
+
+    // Process warehouse destructions (for total destructions)
+    warehouseDestructionsResults.forEach(destruction => {
+      const existing = productTotals.get(destruction.product_id) || {
+        name: destruction.product_name,
+        total: 0,
+        car10Destructions: 0,
+        allCarDestructions: 0,
+        warehouseDestructions: 0
+      };
+      existing.warehouseDestructions = destruction.total_warehouse_destructions;
+      productTotals.set(destruction.product_id, existing);
+    });
+
+    // Convert map to array and filter out rows with all zeros
+    const finalResults = Array.from(productTotals.entries())
+      .map(([id, data]) => ({
+        product_id: id,
+        product_name: data.name,
+        total_quantity: data.total - data.car10Destructions, // deviation (loads - car10 destructions)
+        total_destructions: Number(data.allCarDestructions) + Number(data.warehouseDestructions)
+      }))
+      .filter(item => item.total_quantity !== 0 || item.total_destructions !== 0);
+
+    // Generate PDF
+    const PDFDocument = require('pdfkit');
+    const fs = require('fs');
+    const path = require('path');
+
+    // Create a new PDF document
+    const doc = new PDFDocument({
+      size: 'A4',
+      margin: 50,
+      info: {
+        Title: 'Αναφορά Διαστήματος',
+        Author: 'NICE',
+        Subject: 'Απόκλιση Προϊόντων',
+        Producer: 'NICE System',
+        CreationDate: new Date()
+      }
+    });
+
+    // Format dates for filename
+    function toDDMMYYYY(dateStr) {
+      const [yyyy, mm, dd] = dateStr.split('-');
+      return `${dd}-${mm}-${yyyy}`;
+    }
+    const formattedStartDate = toDDMMYYYY(startDate);
+    const formattedEndDate = toDDMMYYYY(endDate);
+    
+    const filename = `report_${formattedStartDate}_to_${formattedEndDate}.pdf`;
+    const filePath = path.join(__dirname, '..', 'reports', filename);
+
+    // Ensure reports directory exists
+    if (!fs.existsSync(path.join(__dirname, '..', 'reports'))) {
+      fs.mkdirSync(path.join(__dirname, '..', 'reports'));
+    }
+
+    // Pipe PDF to a file
+    doc.pipe(fs.createWriteStream(filePath));
+
+    // Add logo
+    const logoPath = path.join(__dirname, '..', 'assets', 'nice-logo.png');
+    if (fs.existsSync(logoPath)) {
+      const pageWidth = doc.page.width;
+      const logoWidth = 180;
+      const xPosition = (pageWidth - logoWidth) / 2;
+      
+      doc.image(logoPath, xPosition, 50, {
+        width: logoWidth
+      });
+    }
+
+    // Register Arial font with Greek support
+    const arialFontPath = require.resolve('@canvas-fonts/arial/Arial.ttf');
+    doc.registerFont('Arial', arialFontPath);
+    doc.font('Arial');
+
+    // Add title and date range
+    doc.moveDown(6);
+    doc.fontSize(24).text('Αναφορά Διαστήματος', { align: 'center' });
+    doc.moveDown(0.8);
+    doc.fontSize(20).font('Arial').text('Περίοδος', { align: 'center', bold: true });
+    // Underline 'Περίοδος'
+    const periodosText = 'Περίοδος';
+   
+    doc.moveDown(0.5);
+    doc.fontSize(12).font('Arial').text(`${formattedStartDate} έως ${formattedEndDate}`, { align: 'center' });
+    doc.moveDown(2);
+
+    // Table settings
+    const startX = 50;
+    const startY = doc.y;
+    const colWidth = (doc.page.width - 100) / 3; // 3 columns
+    const rowHeight = 30;
+    const textStartY = startY + 10;
+
+    // Draw table headers
+    doc.lineWidth(1);
+    doc.rect(startX, startY, doc.page.width - 100, rowHeight).fill('#f5f5f5');
+    
+    // Header text
+    doc.fillColor('black');
+    doc.fontSize(12);
+    ['Προϊόν', 'Απόκλιση', 'Καταστροφές'].forEach((header, i) => {
+      doc.text(header, startX + (i * colWidth), textStartY, {
+        width: colWidth,
+        align: 'center'
+      });
+    });
+
+    // Header borders
+    doc.rect(startX, startY, doc.page.width - 100, rowHeight).stroke();
+    for (let i = 1; i < 3; i++) {
+      doc.moveTo(startX + (i * colWidth), startY)
+         .lineTo(startX + (i * colWidth), startY + rowHeight)
+         .stroke();
+    }
+
+    // Draw table content
+    let currentY = startY + rowHeight;
+    finalResults.forEach((item) => {
+      // Draw row borders
+      doc.rect(startX, currentY, doc.page.width - 100, rowHeight).stroke();
+      for (let i = 1; i < 3; i++) {
+        doc.moveTo(startX + (i * colWidth), currentY)
+           .lineTo(startX + (i * colWidth), currentY + rowHeight)
+           .stroke();
+      }
+
+      // Draw row content
+      doc.fontSize(10);
+      doc.text(item.product_name, startX, currentY + 10, { width: colWidth, align: 'center' });
+      doc.text(item.total_quantity.toString(), startX + colWidth, currentY + 10, { width: colWidth, align: 'center' });
+      doc.text(item.total_destructions.toString(), startX + (2 * colWidth), currentY + 10, { width: colWidth, align: 'center' });
+
+      currentY += rowHeight;
+    });
+
+    // Draw bottom border
+    doc.moveTo(startX, currentY)
+       .lineTo(startX + doc.page.width - 100, currentY)
+       .stroke();
+
+    // Finalize PDF
+    doc.end();
+
+    // Wait for the file to be written
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Send file
+    res.download(filePath, filename, (err) => {
+      if (err) {
+        console.error(err);
+        const error = new HttpError('Error downloading the report.', 500);
+        return next(error);
+      }
+    });
+
+  } catch (err) {
+    console.log(err);
+    const error = new HttpError('Generating date range report failed.', 500);
+    return next(error);
+  }
+};
+
 exports.getLoads = getLoads;
 exports.getDestructions = getDestructions;
 exports.getReturns = getReturns;
@@ -962,3 +1222,5 @@ exports.getQuantities = getQuantities;
 exports.checkEntryExist = checkEntryExist;
 exports.getTotalProductsDestructionsStatus = getTotalProductsDestructionsStatus;
 exports.generateReport = generateReport;
+exports.generateDateRangeReport = generateDateRangeReport;
+
