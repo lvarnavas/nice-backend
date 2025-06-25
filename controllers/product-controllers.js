@@ -1,4 +1,6 @@
 const connection = require("../database/mysql");
+const fs = require("fs");
+const path = require("path");
 
 const HttpError = require("../models/http-error");
 
@@ -1303,6 +1305,69 @@ const calibrateWarehouse = async (req, res, next) => {
   }
 };
 
+const getReportsList = async (req, res, next) => {
+  const reportsDir = path.join(__dirname, "..", "reports");
+
+  try {
+    if (!fs.existsSync(reportsDir)) {
+      return res.json({ reports: [] });
+    }
+    
+    const files = fs.readdirSync(reportsDir);
+    const pdfFiles = files.filter(
+      (file) => path.extname(file).toLowerCase() === ".pdf"
+    );
+
+    const fileStats = pdfFiles.map((file) => {
+      const filePath = path.join(reportsDir, file);
+      const stat = fs.statSync(filePath);
+      return {
+        filename: file,
+        createdAt: stat.birthtime, // or stat.mtime
+      };
+    });
+
+    fileStats.sort((a, b) => b.createdAt - a.createdAt);
+
+    const recentFiles = fileStats.slice(0, 10).map((file) => {
+      const d = new Date(file.createdAt);
+      const day = String(d.getDate()).padStart(2, "0");
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const year = d.getFullYear();
+      const hours = String(d.getHours()).padStart(2, "0");
+      const minutes = String(d.getMinutes()).padStart(2, "0");
+      return {
+        filename: file.filename,
+        createdAt: `${day}-${month}-${year} ${hours}:${minutes}`,
+      };
+    });
+
+    res.json({ reports: recentFiles });
+  } catch (err) {
+    console.log(err);
+    const error = new HttpError("Fetching reports list failed.", 500);
+    return next(error);
+  }
+};
+
+const downloadReport = async (req, res, next) => {
+  const { fileName } = req.params;
+  const filePath = path.join(__dirname, "..", "reports", fileName);
+
+  if (fs.existsSync(filePath)) {
+    res.download(filePath, fileName, (err) => {
+      if (err) {
+        console.error(err);
+        const error = new HttpError("Error downloading the report.", 500);
+        return next(error);
+      }
+    });
+  } else {
+    const error = new HttpError("File not found.", 404);
+    return next(error);
+  }
+};
+
 exports.getLoads = getLoads;
 exports.getDestructions = getDestructions;
 exports.getReturns = getReturns;
@@ -1322,4 +1387,6 @@ exports.getTotalProductsDestructionsStatus = getTotalProductsDestructionsStatus;
 exports.generateReport = generateReport;
 exports.generateDateRangeReport = generateDateRangeReport;
 exports.calibrateWarehouse = calibrateWarehouse;
+exports.getReportsList = getReportsList;
+exports.downloadReport = downloadReport;
 

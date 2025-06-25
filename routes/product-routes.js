@@ -64,4 +64,8 @@ router.post("/calibrate-warehouse", productControllers.calibrateWarehouse);
 
 router.get("/generate-date-range-report/:startDate/:endDate", productControllers.generateDateRangeReport);
 
+router.get("/reports-list", productControllers.getReportsList);
+
+router.get("/report/:fileName", productControllers.downloadReport);
+
 module.exports = router;
