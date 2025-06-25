@@ -60,6 +60,8 @@ router.patch("/edit-entry", productControllers.editEntry);
 
 router.post("/generate-report", productControllers.generateReport);
 
+router.post("/calibrate-warehouse", productControllers.calibrateWarehouse);
+
 router.get("/generate-date-range-report/:startDate/:endDate", productControllers.generateDateRangeReport);
 
 module.exports = router;
