@@ -787,6 +787,9 @@ const generateReport = async (req, res, next) => {
   const path = require('path');
 
   try {
+    // Get the date variables using the dateFormatter
+    const { firstDayCurrentMonth, lastDayCurrentMonth, firstDayPrevMonth } = dateFormatter();
+
     // Get current date for filename
     const now = new Date();
     const day = String(now.getDate()).padStart(2, '0');
@@ -830,7 +833,7 @@ const generateReport = async (req, res, next) => {
     doc.pipe(fs.createWriteStream(finalFilePath));
 
     // Get warehouse status
-    const warehouseStatusQuery = "SELECT p.id as product_id, p.name as product_name, COALESCE(SUM(loads_in_ntalika), 0) + COALESCE(SUM(apografi_proionton), 0) + COALESCE(SUM(returns), 0) - COALESCE(SUM(loads_out_ntalika), 0) - COALESCE(SUM(warehouse_destructions), 0) - COALESCE(SUM(car_destructions), 0) AS current_quantity FROM mydb.products p LEFT JOIN (SELECT products_id, SUM(quantity) AS loads_in_ntalika FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.cars c ON l.car_id = c.id WHERE c.isNtalika = 1 GROUP BY products_id) AS lin ON p.id = lin.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS apografi_proionton FROM mydb.apografi_proionton ap JOIN mydb.apografi_proionton_transaction apt ON ap.apografi_id = apt.apografi_apografi_id GROUP BY products_id) AS apg ON p.id = apg.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS returns FROM mydb.returns r JOIN mydb.returns_transaction rt ON r.id = rt.returns_id GROUP BY products_id) AS ret ON p.id = ret.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS loads_out_ntalika FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.cars c ON l.car_id = c.id WHERE c.isNtalika = 0 GROUP BY products_id) AS lout ON p.id = lout.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS warehouse_destructions FROM mydb.warehouse_destructions wd JOIN mydb.warehouse_destruction_transaction wdt ON wd.id = wdt.warehouse_destructions_id GROUP BY products_id) AS wde ON p.id = wde.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS car_destructions FROM mydb.car_destructions cd JOIN mydb.car_destruction_transaction cdt ON cd.id = cdt.car_destructions_id GROUP BY products_id) AS cde ON p.id = cde.products_id GROUP BY p.id, p.name";
+    const warehouseStatusQuery = "SELECT p.id AS product_id, p.name AS product_name, COALESCE(SUM(loads_in_ntalika), 0) + COALESCE(SUM(apografi_proionton), 0) + COALESCE(SUM(returns), 0) - COALESCE(SUM(loads_out_ntalika), 0) - COALESCE(SUM(warehouse_destructions), 0) - COALESCE(SUM(car_destructions), 0) AS current_quantity FROM mydb.products p LEFT JOIN (SELECT products_id, SUM(quantity) AS loads_in_ntalika FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.cars c ON l.car_id = c.id WHERE l.date BETWEEN '" + `${firstDayCurrentMonth}` + "' AND '" + `${lastDayCurrentMonth}` + "' AND c.isNtalika = 1 GROUP BY products_id) AS lin ON p.id = lin.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS apografi_proionton FROM mydb.apografi_proionton ap JOIN mydb.apografi_proionton_transaction apt ON ap.apografi_id = apt.apografi_apografi_id WHERE ap.month = '" + `${firstDayPrevMonth}` + "' GROUP BY products_id) AS apg ON p.id = apg.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS returns FROM mydb.returns r JOIN mydb.returns_transaction rt ON r.id = rt.returns_id WHERE r.date BETWEEN '" + `${firstDayCurrentMonth}` + "' AND '" + `${lastDayCurrentMonth}` + "' GROUP BY products_id) AS ret ON p.id = ret.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS loads_out_ntalika FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.cars c ON l.car_id = c.id WHERE l.date BETWEEN '" + `${firstDayCurrentMonth}` + "' AND '" + `${lastDayCurrentMonth}` + "' AND c.isNtalika = 0 GROUP BY products_id) AS lout ON p.id = lout.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS warehouse_destructions FROM mydb.warehouse_destructions wd JOIN mydb.warehouse_destruction_transaction wdt ON wd.id = wdt.warehouse_destructions_id WHERE wd.date BETWEEN '" + `${firstDayCurrentMonth}` + "' AND '" + `${lastDayCurrentMonth}` + "' GROUP BY products_id) AS wde ON p.id = wde.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS car_destructions FROM mydb.car_destructions cd JOIN mydb.car_destruction_transaction cdt ON cd.id = cdt.car_destructions_id WHERE cd.date BETWEEN '" + `${firstDayCurrentMonth}` + "' AND '" + `${lastDayCurrentMonth}` + "' GROUP BY products_id) AS cde ON p.id = cde.products_id GROUP BY p.id, p.name";
     
     const [warehouseStatus] = await connection.query(warehouseStatusQuery);
 
@@ -947,10 +950,10 @@ const generateReport = async (req, res, next) => {
 
 const generateDateRangeReport = async (req, res, next) => {
   const { startDate, endDate } = req.params;
-  const carId = 10; // Fixed car ID as per requirements
+  const carId = 999; // Fixed car ID as per requirements
 
   try {
-    // Loads for car 10 in the date range
+    // Loads for car 999 in the date range
     const loadsQuery = `
       SELECT p.id as product_id, p.name as product_name, 
              COALESCE(SUM(t.quantity), 0) as total_loads
@@ -961,8 +964,8 @@ const generateDateRangeReport = async (req, res, next) => {
       GROUP BY p.id, p.name
       ORDER BY p.id`;
 
-    // Car destructions for car 10 in the date range (for deviation)
-    const car10DestructionsQuery = `
+    // Car destructions for car 999 in the date range (for deviation)
+    const car999DestructionsQuery = `
       SELECT p.id as product_id, p.name as product_name,
              COALESCE(SUM(cdt.quantity), 0) as total_destructions
       FROM mydb.products p
@@ -996,7 +999,7 @@ const generateDateRangeReport = async (req, res, next) => {
 
     // Execute all queries
     const [loadsResults] = await connection.query(loadsQuery, [carId, startDate, endDate]);
-    const [car10DestructionsResults] = await connection.query(car10DestructionsQuery, [carId, startDate, endDate]);
+    const [car999DestructionsResults] = await connection.query(car999DestructionsQuery, [carId, startDate, endDate]);
     const [allCarDestructionsResults] = await connection.query(allCarDestructionsQuery, [startDate, endDate]);
     const [warehouseDestructionsResults] = await connection.query(warehouseDestructionsQuery, [startDate, endDate]);
 
@@ -1008,22 +1011,22 @@ const generateDateRangeReport = async (req, res, next) => {
       productTotals.set(load.product_id, {
         name: load.product_name,
         total: load.total_loads,
-        car10Destructions: 0,
+        car999Destructions: 0,
         allCarDestructions: 0,
         warehouseDestructions: 0
       });
     });
 
-    // Process car 10 destructions (for deviation)
-    car10DestructionsResults.forEach(destruction => {
+    // Process car 999 destructions (for deviation)
+    car999DestructionsResults.forEach(destruction => {
       const existing = productTotals.get(destruction.product_id) || {
         name: destruction.product_name,
         total: 0,
-        car10Destructions: 0,
+        car999Destructions: 0,
         allCarDestructions: 0,
         warehouseDestructions: 0
       };
-      existing.car10Destructions = destruction.total_destructions;
+      existing.car999Destructions = destruction.total_destructions;
       productTotals.set(destruction.product_id, existing);
     });
 
@@ -1032,7 +1035,7 @@ const generateDateRangeReport = async (req, res, next) => {
       const existing = productTotals.get(destruction.product_id) || {
         name: destruction.product_name,
         total: 0,
-        car10Destructions: 0,
+        car999Destructions: 0,
         allCarDestructions: 0,
         warehouseDestructions: 0
       };
@@ -1045,7 +1048,7 @@ const generateDateRangeReport = async (req, res, next) => {
       const existing = productTotals.get(destruction.product_id) || {
         name: destruction.product_name,
         total: 0,
-        car10Destructions: 0,
+        car999Destructions: 0,
         allCarDestructions: 0,
         warehouseDestructions: 0
       };
@@ -1058,7 +1061,7 @@ const generateDateRangeReport = async (req, res, next) => {
       .map(([id, data]) => ({
         product_id: id,
         product_name: data.name,
-        total_quantity: data.total - data.car10Destructions, // deviation (loads - car10 destructions)
+        total_quantity: data.total - data.car999Destructions, // deviation (loads - car999 destructions)
         total_destructions: Number(data.allCarDestructions) + Number(data.warehouseDestructions)
       }))
       .filter(item => item.total_quantity !== 0 || item.total_destructions !== 0);
