@@ -318,7 +318,7 @@ const getTotalProductsDestructionsStatus = async (req, res, next) => {
 };
 
 const getCarList = async (req, res, next) => {
-  const carslist = "SELECT * FROM mydb.cars;";
+  const carslist = "SELECT * FROM mydb.cars WHERE id != 10;";
 
   try {
     const [results] = await connection.query(carslist);
@@ -1078,7 +1078,7 @@ const generateDateRangeReport = async (req, res, next) => {
       size: 'A4',
       margin: 50,
       info: {
-        Title: 'Αναφορά Διαστήματος',
+        Title: 'Διάστημα Αναφοράς Προϊόντων',
         Author: 'NICE',
         Subject: 'Απόκλιση Προϊόντων',
         Producer: 'NICE System',
@@ -1124,7 +1124,7 @@ const generateDateRangeReport = async (req, res, next) => {
 
     // Add title and date range
     doc.moveDown(6);
-    doc.fontSize(24).text('Αναφορά Διαστήματος', { align: 'center' });
+    doc.fontSize(24).text('Διάστημα Αναφοράς Προϊόντων', { align: 'center' });
     doc.moveDown(0.8);
     doc.fontSize(20).font('Arial').text('Περίοδος', { align: 'center', bold: true });
     // Underline 'Περίοδος'
