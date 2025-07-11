@@ -18,8 +18,12 @@ const getLoads = async (req, res, next) => {
     if (flag === "singleCarLoads") {
       loads =
         "SET @sql = NULL; " +
-        "SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`') ORDER BY p.id) INTO @sql " +
-        "FROM mydb.products p; " +
+        "SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`') ORDER BY FIELD(p.id, " +
+        customOrder.join(",") +
+        ")) INTO @sql " +
+        "FROM mydb.products p WHERE p.id IN (" +
+        customOrder.join(",") +
+        "); " +
         "SET @sql = CONCAT('SELECT l.date, l.id, ', @sql, ' FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.products p ON t.products_id = p.id WHERE l.car_id = " +
         `${carId}` +
         " AND l.date BETWEEN \\'" +
@@ -36,8 +40,12 @@ const getLoads = async (req, res, next) => {
       // [QUERY 2] -> ΦΟΡΤΩΜΑΤΑ ΟΛΩΝ ΤΩΝ ΑΜΑΞΙΩΝ
       loads =
         "SET @sql = NULL; " +
-        "SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`') ORDER BY p.id) INTO @sql " +
-        "FROM mydb.products p; " +
+        "SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`') ORDER BY FIELD(p.id, " +
+        customOrder.join(",") +
+        ")) INTO @sql " +
+        "FROM mydb.products p WHERE p.id IN (" +
+        customOrder.join(",") +
+        "); " +
         "SET @sql = CONCAT('SELECT c.pinakida AS `Pinakida`, ', @sql, ' FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.products p ON t.products_id = p.id JOIN mydb.cars c ON l.car_id = c.id WHERE l.date BETWEEN \\'" +
         `${startDate}` +
         "\\' AND \\'" +
@@ -77,8 +85,12 @@ const getDestructions = async (req, res, next) => {
       // [QUERY 3] -> ΚΑΤΑΣΤΡΟΦΕΣ ΟΛΩΝ ΤΩΝ ΑΜΑΞΙΩΝ
       destructions =
         "SET @sql = NULL; " +
-        "SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`') ORDER BY p.id) INTO @sql " +
-        "FROM mydb.products p; " +
+        "SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`') ORDER BY FIELD(p.id, " +
+        customOrder.join(",") +
+        ")) INTO @sql " +
+        "FROM mydb.products p WHERE p.id IN (" +
+        customOrder.join(",") +
+        "); " +
         "SET @sql = CONCAT('SELECT c.pinakida AS `Pinakida`, ', @sql, ' FROM mydb.car_destructions l JOIN mydb.car_destruction_transaction t ON l.id = t.car_destructions_id JOIN mydb.products p ON t.products_id = p.id JOIN mydb.cars c ON l.cars_id = c.id WHERE l.date BETWEEN \\'" +
         `${startDate}` +
         "\\' AND \\'" +
@@ -99,8 +111,12 @@ const getDestructions = async (req, res, next) => {
       // [QUERY 5] -> ΚΑΤΑΣΤΡΟΦΕΣ ΑΠΟΘΗΚΗΣ
       destructions =
         "SET @sql_products = NULL; " +
-        "SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`') ORDER BY p.id) INTO @sql_products " +
-        "FROM mydb.products p; " +
+        "SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`') ORDER BY FIELD(p.id, " +
+        customOrder.join(",") +
+        ")) INTO @sql_products " +
+        "FROM mydb.products p WHERE p.id IN (" +
+        customOrder.join(",") +
+        "); " +
         "SET @sql = CONCAT('SELECT wd.id AS ID, wd.date AS Date, ', @sql_products, ' FROM mydb.warehouse_destructions wd JOIN mydb.warehouse_destruction_transaction t ON wd.id = t.warehouse_destructions_id JOIN mydb.products p ON t.products_id = p.id WHERE wd.date BETWEEN \\'" +
         `${startDate}` +
         "\\' AND \\'" +
@@ -115,8 +131,12 @@ const getDestructions = async (req, res, next) => {
       // [QUERY 4] -> ΚΑΤΑΣΤΡΟΦΕΣ ΕΝΟΣ ΣΥΓΚΕΚΡΙΜΕΝΟΥ ΑΜΑΞΙΟΥ
       destructions =
         "SET @sql = NULL; " +
-        "SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', cdt.quantity, 0)) AS `', p.name, '`') ORDER BY p.id) INTO @sql " +
-        "FROM mydb.products p; " +
+        "SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', cdt.quantity, 0)) AS `', p.name, '`') ORDER BY FIELD(p.id, " +
+        customOrder.join(",") +
+        ")) INTO @sql " +
+        "FROM mydb.products p WHERE p.id IN (" +
+        customOrder.join(",") +
+        "); " +
         "SET @sql = CONCAT('SELECT cd.date, cd.id, ', @sql, ' FROM mydb.car_destructions cd JOIN mydb.car_destruction_transaction cdt ON cd.id = cdt.car_destructions_id JOIN mydb.products p ON cdt.products_id = p.id WHERE cd.cars_id = " +
         `${carIdParam}` +
         " AND cd.date BETWEEN \\'" +
@@ -157,8 +177,12 @@ const getReturns = async (req, res, next) => {
       // [QUERY 7] -> ΕΠΙΣΤΡΟΦΕΣ ΕΝΟΣ ΣΥΓΚΕΚΡΙΜΕΝΟΥ ΑΜΑΞΙΟΥ
       returns =
         "SET @sql = NULL; " +
-        "SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', rt.quantity, 0)) AS `', p.name, '`') ORDER BY p.id) INTO @sql " +
-        "FROM mydb.products p; " +
+        "SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', rt.quantity, 0)) AS `', p.name, '`') ORDER BY FIELD(p.id, " +
+        customOrder.join(",") +
+        ")) INTO @sql " +
+        "FROM mydb.products p WHERE p.id IN (" +
+        customOrder.join(",") +
+        "); " +
         "SET @sql = CONCAT('SELECT r.date, r.id, ', @sql, ' FROM mydb.returns r JOIN mydb.returns_transaction rt ON r.id = rt.returns_id JOIN mydb.products p ON rt.products_id = p.id WHERE r.car_id = " +
         `${carId}` +
         " AND r.date BETWEEN \\'" +
@@ -175,8 +199,12 @@ const getReturns = async (req, res, next) => {
       // [QUERY 8] -> ΕΠΙΣΤΡΟΦΕΣ ΟΛΩΝ ΤΩΝ ΑΜΑΞΙΩΝ
       returns =
         "SET @sql = NULL; " +
-        "SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`') ORDER BY p.id) INTO @sql " +
-        "FROM mydb.products p; " +
+        "SELECT GROUP_CONCAT(DISTINCT CONCAT('SUM(IF(p.id = ', p.id, ', t.quantity, 0)) AS `', p.name, '`') ORDER BY FIELD(p.id, " +
+        customOrder.join(",") +
+        ")) INTO @sql " +
+        "FROM mydb.products p WHERE p.id IN (" +
+        customOrder.join(",") +
+        "); " +
         "SET @sql = CONCAT('SELECT c.pinakida AS `pinakida`, ', @sql, ' FROM mydb.returns l JOIN mydb.returns_transaction t ON l.id = t.returns_id JOIN mydb.products p ON t.products_id = p.id JOIN mydb.cars c ON l.car_id = c.id WHERE l.date BETWEEN \\'" +
         `${startDate}` +
         "\\' AND \\'" +
