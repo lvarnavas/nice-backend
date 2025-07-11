@@ -3,3 +3,4 @@ public
 .env
 nodemon.json
 reports/
+.DS_Store
