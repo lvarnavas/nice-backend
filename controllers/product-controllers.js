@@ -6,6 +6,8 @@ const HttpError = require("../models/http-error");
 
 const dateFormatter = require("../shared/dateFormatter");
 
+const customOrder = [1, 2, 3, 4, 5, 6, 7, 8, 11, 10, 12, 14, 9];
+
 const getLoads = async (req, res, next) => {
   const { carId, startDate, endDate } = req.params;
   const carIdParam = carId || null;
@@ -837,7 +839,11 @@ const generateReport = async (req, res, next) => {
     // Get warehouse status
     const warehouseStatusQuery = "SELECT p.id AS product_id, p.name AS product_name, COALESCE(SUM(loads_in_ntalika), 0) + COALESCE(SUM(apografi_proionton), 0) + COALESCE(SUM(returns), 0) - COALESCE(SUM(loads_out_ntalika), 0) - COALESCE(SUM(warehouse_destructions), 0) - COALESCE(SUM(car_destructions), 0) AS current_quantity FROM mydb.products p LEFT JOIN (SELECT products_id, SUM(quantity) AS loads_in_ntalika FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.cars c ON l.car_id = c.id WHERE l.date BETWEEN '" + `${firstDayCurrentMonth}` + "' AND '" + `${lastDayCurrentMonth}` + "' AND c.isNtalika = 1 GROUP BY products_id) AS lin ON p.id = lin.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS apografi_proionton FROM mydb.apografi_proionton ap JOIN mydb.apografi_proionton_transaction apt ON ap.apografi_id = apt.apografi_apografi_id WHERE ap.month = '" + `${firstDayPrevMonth}` + "' GROUP BY products_id) AS apg ON p.id = apg.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS returns FROM mydb.returns r JOIN mydb.returns_transaction rt ON r.id = rt.returns_id WHERE r.date BETWEEN '" + `${firstDayCurrentMonth}` + "' AND '" + `${lastDayCurrentMonth}` + "' GROUP BY products_id) AS ret ON p.id = ret.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS loads_out_ntalika FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.cars c ON l.car_id = c.id WHERE l.date BETWEEN '" + `${firstDayCurrentMonth}` + "' AND '" + `${lastDayCurrentMonth}` + "' AND c.isNtalika = 0 GROUP BY products_id) AS lout ON p.id = lout.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS warehouse_destructions FROM mydb.warehouse_destructions wd JOIN mydb.warehouse_destruction_transaction wdt ON wd.id = wdt.warehouse_destructions_id WHERE wd.date BETWEEN '" + `${firstDayCurrentMonth}` + "' AND '" + `${lastDayCurrentMonth}` + "' GROUP BY products_id) AS wde ON p.id = wde.products_id LEFT JOIN (SELECT products_id, SUM(quantity) AS car_destructions FROM mydb.car_destructions cd JOIN mydb.car_destruction_transaction cdt ON cd.id = cdt.car_destructions_id WHERE cd.date BETWEEN '" + `${firstDayCurrentMonth}` + "' AND '" + `${lastDayCurrentMonth}` + "' GROUP BY products_id) AS cde ON p.id = cde.products_id GROUP BY p.id, p.name";
     
-    const [warehouseStatus] = await connection.query(warehouseStatusQuery);
+    const [warehouseStatusRaw] = await connection.query(warehouseStatusQuery);
+    // Filter out product_id 13 and sort by customOrder
+    const warehouseStatus = warehouseStatusRaw
+      .filter(item => item.product_id !== 13)
+      .sort((a, b) => customOrder.indexOf(a.product_id) - customOrder.indexOf(b.product_id));
 
     // Register Arial font with Greek support
     const arialFontPath = require.resolve('@canvas-fonts/arial/Arial.ttf');
