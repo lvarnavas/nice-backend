@@ -304,7 +304,7 @@ const getTotalProductsDestructionsStatus = async (req, res, next) => {
     `${firstDayCurrentMonth}` +
     "' AND '" +
     `${lastDayCurrentMonth}` +
-    "'  GROUP BY products.id, products.name) AS combined GROUP BY product_id, product_name;";
+    "' AND car_destructions.cars_id != 999 GROUP BY products.id, products.name) AS combined GROUP BY product_id, product_name;";
 
   try {
     const [results] = await connection.query(totalDestructionsQuery);
