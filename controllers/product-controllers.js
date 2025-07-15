@@ -6,7 +6,7 @@ const HttpError = require("../models/http-error");
 
 const dateFormatter = require("../shared/dateFormatter");
 
-const customOrder = [1, 2, 3, 4, 5, 6, 7, 8, 11, 10, 12, 14, 9];
+const customOrder = [  1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 9, 14 ];
 
 const getLoads = async (req, res, next) => {
   const { carId, startDate, endDate } = req.params;
@@ -170,6 +170,7 @@ const getReturns = async (req, res, next) => {
   const { carId, startDate, endDate } = req.params;
   const carIdParam = carId || null;
   const { flag } = req.body;
+  console.timeLog(startDate, endDate);
 
   let returns;
   if (carIdParam !== null) {
