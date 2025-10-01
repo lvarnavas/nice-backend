@@ -238,18 +238,16 @@ const getWareHouseStatus = async (req, res, next) => {
   const { firstDayCurrentMonth, lastDayCurrentMonth, firstDayPrevMonth } =
     dateFormatter();
 
-  const partsCurrentMonth = firstDayCurrentMonth.split("-");
-  //const currentMonth = partsCurrentMonth[1];
-
   const partsPrevMonth = firstDayPrevMonth.split("-");
   const prevMonth = partsPrevMonth[1];
   const prevYear = partsPrevMonth[0];
-  const prevMonthCheck =
-    prevMonth === "01"
-      ? 12
-      : (parseInt(prevMonth, 10) - 1)
-          .toString()
-          .padStart(prevMonth.length, "0");
+  const prevMonthInt = parseInt(prevMonth, 10);
+  const prevMonthCheck = prevMonthInt === 1 ? 12 : prevMonthInt - 1;
+  const prevMonthCheckStr = prevMonthCheck
+    .toString()
+    .padStart(prevMonth.length, "0");
+  const prevYearInt = parseInt(prevYear, 10);
+  const prevYearForPrevMonthCheck = prevMonthInt === 1 ? prevYearInt - 1 : prevYearInt;
 
   //CHECK ston pinaka "apografi_proionton" an yparxei kataxorisi pou to pedio "month" tha exei tin imerominia tou proigoumenou mina
   const checkPrevMonthApografi =
@@ -265,18 +263,30 @@ const getWareHouseStatus = async (req, res, next) => {
     firstDayPrevMonth +
     "'); INSERT INTO `mydb`.`apografi_proionton_transaction` (`apografi_apografi_id`, `products_id`, `quantity`) SELECT (SELECT `apografi_id` FROM `mydb`.`apografi_proionton` WHERE `month` = '" +
     firstDayPrevMonth +
-    "'), p.`id`, (IFNULL((SELECT SUM(t.quantity) FROM `mydb`.`transfers` t JOIN `mydb`.`loads` l ON t.`loads_id` = l.`id` JOIN `mydb`.`cars` c ON l.`car_id` = c.`id` WHERE c.`isNtalika` = 1 AND MONTH(l.`date`) = " +
+    "'), p.`id`, (IFNULL((SELECT SUM(t.quantity) FROM `mydb`.`transfers` t JOIN `mydb`.`loads` l ON t.`loads_id` = l.`id` JOIN `mydb`.`cars` c ON l.`car_id` = c.`id` WHERE c.`isNtalika` = 1 AND YEAR(l.`date`) = " +
+    prevYear +
+    " AND MONTH(l.`date`) = " +
     prevMonth +
-    " AND t.`products_id` = p.`id`), 0) - IFNULL((SELECT SUM(t.quantity) FROM `mydb`.`transfers` t JOIN `mydb`.`loads` l ON t.`loads_id` = l.`id` JOIN `mydb`.`cars` c ON l.`car_id` = c.`id` WHERE c.`isNtalika` = 0 AND MONTH(l.`date`) = " +
+    " AND t.`products_id` = p.`id`), 0) - IFNULL((SELECT SUM(t.quantity) FROM `mydb`.`transfers` t JOIN `mydb`.`loads` l ON t.`loads_id` = l.`id` JOIN `mydb`.`cars` c ON l.`car_id` = c.`id` WHERE c.`isNtalika` = 0 AND YEAR(l.`date`) = " +
+    prevYear +
+    " AND MONTH(l.`date`) = " +
     prevMonth +
-    " AND t.`products_id` = p.`id`), 0) - IFNULL((SELECT SUM(dt.quantity) FROM `mydb`.`car_destruction_transaction` dt JOIN `mydb`.`car_destructions` d ON dt.`car_destructions_id` = d.`id` WHERE MONTH(d.`date`) = " +
+    " AND t.`products_id` = p.`id`), 0) - IFNULL((SELECT SUM(dt.quantity) FROM `mydb`.`car_destruction_transaction` dt JOIN `mydb`.`car_destructions` d ON dt.`car_destructions_id` = d.`id` WHERE YEAR(d.`date`) = " +
+    prevYear +
+    " AND MONTH(d.`date`) = " +
     prevMonth +
-    " AND dt.`products_id` = p.`id`), 0) + IFNULL((SELECT SUM(rt.quantity) FROM `mydb`.`returns_transaction` rt JOIN `mydb`.`returns` r ON rt.`returns_id` = r.`id` WHERE MONTH(r.`date`) = " +
+    " AND dt.`products_id` = p.`id`), 0) + IFNULL((SELECT SUM(rt.quantity) FROM `mydb`.`returns_transaction` rt JOIN `mydb`.`returns` r ON rt.`returns_id` = r.`id` WHERE YEAR(r.`date`) = " +
+    prevYear +
+    " AND MONTH(r.`date`) = " +
     prevMonth +
-    " AND rt.`products_id` = p.`id`), 0) - IFNULL((SELECT SUM(wt.quantity) FROM `mydb`.`warehouse_destruction_transaction` wt JOIN `mydb`.`warehouse_destructions` w ON wt.`warehouse_destructions_id` = w.`id` WHERE MONTH(w.`date`) = " +
+    " AND rt.`products_id` = p.`id`), 0) - IFNULL((SELECT SUM(wt.quantity) FROM `mydb`.`warehouse_destruction_transaction` wt JOIN `mydb`.`warehouse_destructions` w ON wt.`warehouse_destructions_id` = w.`id` WHERE YEAR(w.`date`) = " +
+    prevYear +
+    " AND MONTH(w.`date`) = " +
     prevMonth +
-    " AND wt.`products_id` = p.`id`), 0) + IFNULL((SELECT SUM(apt.quantity) FROM `mydb`.`apografi_proionton_transaction` apt JOIN `mydb`.`apografi_proionton` ap ON apt.`apografi_apografi_id` = ap.`apografi_id` WHERE MONTH(ap.`month`) = " +
-    prevMonthCheck +
+    " AND wt.`products_id` = p.`id`), 0) + IFNULL((SELECT SUM(apt.quantity) FROM `mydb`.`apografi_proionton_transaction` apt JOIN `mydb`.`apografi_proionton` ap ON apt.`apografi_apografi_id` = ap.`apografi_id` WHERE YEAR(ap.`month`) = " +
+    prevYearForPrevMonthCheck +
+    " AND MONTH(ap.`month`) = " +
+    prevMonthCheckStr +
     " AND apt.`products_id` = p.`id`), 0)) AS `product_sum` FROM `mydb`.`products` p;";
 
   const warehouseStatus =

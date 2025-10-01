@@ -1,5 +1,8 @@
 function dateFormatter() {
   const date = new Date();
+  if (date.getHours() < 4) {
+    date.setDate(date.getDate() - 1);
+  }
 
   // Get the first day of the current month
   const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
