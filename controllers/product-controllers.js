@@ -248,6 +248,19 @@ const getWareHouseStatus = async (req, res, next) => {
     .padStart(prevMonth.length, "0");
   const prevYearInt = parseInt(prevYear, 10);
   const prevYearForPrevMonthCheck = prevMonthInt === 1 ? prevYearInt - 1 : prevYearInt;
+  const prevYearForPrevMonthCheckStr = prevYearForPrevMonthCheck.toString();
+
+  // console.log("First Day Current Month: ", firstDayCurrentMonth);
+  // console.log("Last Day Current Month: ", lastDayCurrentMonth);
+  // console.log("First Day Prev Month: ", firstDayPrevMonth);
+  // console.log("Prev Month: ", prevMonth);
+  // console.log("Prev Month Int: ", prevMonthInt);
+  // console.log("Prev Year: ", prevYear);
+  // console.log("Prev Month Check: ", prevMonthCheck);
+  // console.log("Prev Month Check Str: ", prevMonthCheckStr);
+  // console.log("Prev Year Int: ", prevYearInt);
+  // console.log("Prev Year For Prev Month Check: ", prevYearForPrevMonthCheck);
+  // console.log("Prev Year For Prev Month Check Str: ", prevYearForPrevMonthCheckStr);
 
   //CHECK ston pinaka "apografi_proionton" an yparxei kataxorisi pou to pedio "month" tha exei tin imerominia tou proigoumenou mina
   const checkPrevMonthApografi =
@@ -284,7 +297,7 @@ const getWareHouseStatus = async (req, res, next) => {
     " AND MONTH(w.`date`) = " +
     prevMonth +
     " AND wt.`products_id` = p.`id`), 0) + IFNULL((SELECT SUM(apt.quantity) FROM `mydb`.`apografi_proionton_transaction` apt JOIN `mydb`.`apografi_proionton` ap ON apt.`apografi_apografi_id` = ap.`apografi_id` WHERE YEAR(ap.`month`) = " +
-    prevYearForPrevMonthCheck +
+    prevYearForPrevMonthCheckStr +
     " AND MONTH(ap.`month`) = " +
     prevMonthCheckStr +
     " AND apt.`products_id` = p.`id`), 0)) AS `product_sum` FROM `mydb`.`products` p;";
@@ -319,6 +332,8 @@ const getWareHouseStatus = async (req, res, next) => {
       checkPrevMonthApografi
     );
     if (prevMonthApografiResult[0].data === 0) {
+      // console.log(prevMonthApografiResult[0].data);
+      // console.log(prevMonthApografiResult);
       //YPOLOGISMOS APOGRAFIS PROIGOUMENOU MINA
       const [resultsCalculationApografis] = await connection.query(
         calculateApografi
@@ -1262,6 +1277,8 @@ const calibrateWarehouse = async (req, res, next) => {
   try {
     const { firstDayCurrentMonth, lastDayCurrentMonth, firstDayPrevMonth } =
       dateFormatter();
+      //console.log("Calibrate warehouse:");
+      //console.log(firstDayCurrentMonth, lastDayCurrentMonth, firstDayPrevMonth);
     const warehouseStatusQuery =
       "SELECT p.id AS product_id, p.name AS product_name, COALESCE(SUM(loads_in_ntalika), 0) + COALESCE(SUM(apografi_proionton), 0) + COALESCE(SUM(returns), 0) - COALESCE(SUM(loads_out_ntalika), 0) - COALESCE(SUM(warehouse_destructions), 0) - COALESCE(SUM(car_destructions), 0) AS current_quantity FROM mydb.products p LEFT JOIN (SELECT products_id, SUM(quantity) AS loads_in_ntalika FROM mydb.loads l JOIN mydb.transfers t ON l.id = t.loads_id JOIN mydb.cars c ON l.car_id = c.id WHERE l.date BETWEEN '" +
       `${firstDayCurrentMonth}` +
@@ -1310,13 +1327,22 @@ const calibrateWarehouse = async (req, res, next) => {
       }
     });
 
-    const date = new Date().toISOString().slice(0, 10);
-
+    const dateObj = new Date();
+    const dateLocal = new Intl.DateTimeFormat("el-GR", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    const dateWithSlashes = dateLocal.format(dateObj);
+    const dateParts = dateWithSlashes.split("/");
+    const date = dateParts[2] + "-" + dateParts[1] + "-" + dateParts[0];
+    //console.log("Positive differences:", positiveDifferences);
     if (positiveDifferences.length > 0) {
       const [results] = await connection.query(
         "INSERT INTO mydb.loads (car_id, date) VALUES (?, ?)",
         [carId, date]
       );
+      //console.log(results);
       const lastInsertedLoadId = results.insertId;
       let transfersQuery =
         "INSERT INTO mydb.transfers (loads_id, products_id, quantity) VALUES";
@@ -1327,11 +1353,13 @@ const calibrateWarehouse = async (req, res, next) => {
       await connection.query(transfersQuery);
     }
 
+    //console.log("Negative differences:", negativeDifferences);
     if (negativeDifferences.length > 0) {
       const [results] = await connection.query(
         "INSERT INTO mydb.car_destructions (cars_id, date) VALUES (?, ?)",
         [carId, date]
       );
+      //console.log(results);
       const lastInsertedDestructionId = results.insertId;
       let destructionQuery =
         "INSERT INTO mydb.car_destruction_transaction (car_destructions_id, products_id, quantity) VALUES";
