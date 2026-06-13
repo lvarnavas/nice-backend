@@ -6,7 +6,7 @@ const HttpError = require("../models/http-error");
 
 const dateFormatter = require("../shared/dateFormatter");
 
-const customOrder = [  1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 9, 14 ];
+const customOrder = [  1, 2, 3, 4, 5, 6, 7, 8, 15, 10, 11, 12, 9, 14, 16 ];
 
 const getLoads = async (req, res, next) => {
   const { carId, startDate, endDate } = req.params;
