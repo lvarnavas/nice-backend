@@ -10,7 +10,10 @@ const logIn = async (req, res, next) => {
   const sql = "SELECT * FROM users WHERE username = ?";
   const [existingUser] = await connection.query(sql, [username]);
 
-  if (!existingUser) {
+  // A query that matches nothing yields an empty array, which is truthy, so
+  // this has to test the length. Otherwise an unknown username falls through
+  // to bcrypt.compare and crashes on the missing record.
+  if (!existingUser || existingUser.length === 0) {
     const error = new Error("Λάθος όνομα χρήστη ή κωδικός πρόσβασης.");
     error.status = 403;
     return next(error);
