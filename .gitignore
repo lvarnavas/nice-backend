@@ -1,6 +1,25 @@
+# Dependencies
 node_modules/
-public
+
+# Environment variables and secrets
 .env
+.env.*
+!.env.example
 nodemon.json
+
+# Frontend build output served by this API
+public/
+
+# Generated PDF reports
 reports/
+
+# Archives
+*.zip
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor
 .DS_Store
+.idea/

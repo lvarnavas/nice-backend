@@ -2,6 +2,7 @@ const connection = require("../database/mysql");
 const HttpError = require("../models/http-error");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
+const config = require("../shared/config");
 
 const logIn = async (req, res, next) => {
   const { username, password } = req.body;
@@ -35,7 +36,7 @@ const logIn = async (req, res, next) => {
   try {
     token = jwt.sign(
       { userId: existingUser[0].id, username: existingUser[0].username },
-      "supersecret",
+      config.jwtSecret,
       { expiresIn: "1h" }
     );
   } catch (err) {

@@ -1,8 +1,11 @@
 {
   "name": "nice-backend",
   "version": "1.0.0",
-  "description": "ice warehouse management",
+  "description": "REST API for the Nice ice warehouse management system",
   "main": "server.js",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
@@ -12,8 +15,8 @@
     "type": "git",
     "url": "git+https://github.com/lvarnavas/nice-backend.git"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Lampros Varnavas",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/lvarnavas/nice-backend/issues"
   },
@@ -25,7 +28,6 @@
     "express": "^4.18.2",
     "express-validator": "^6.15.0",
     "jsonwebtoken": "^9.0.0",
-    "mysql": "^2.18.1",
     "mysql2": "^3.2.0",
     "pdfkit": "^0.17.1",
     "uuid": "^9.0.0"

@@ -1,4 +1,4 @@
-require("dotenv").config();
+const config = require("./shared/config");
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
@@ -47,6 +47,6 @@ app.use((error, req, res, next) => {
   res.json({ message: error.message || "An unknown error occurred" });
 });
 
-app.listen(process.env.PORT, () => {
-  console.log(`Server started and listening on port ${process.env.PORT}`);
+app.listen(config.port, () => {
+  console.log(`Server started and listening on port ${config.port}`);
 });

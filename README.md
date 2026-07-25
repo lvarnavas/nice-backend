@@ -1,87 +1,177 @@
-# Nice - Backend
+# Nice — Backend
 
-This is the Node.js/Express back-end API server for the **Nice** project. It provides RESTful endpoints for data management and connects to a MySQL database.
+REST API for **Nice**, an ice warehouse management system. It tracks product
+stock, vehicle loads, returns and destructions, and generates PDF reports for a
+single day or a date range.
+
+This is the server component. The React client lives in
+[nice-frontend](https://github.com/lvarnavas/nice-frontend).
+
+---
+
+## Tech stack
+
+| Concern        | Choice                   |
+| -------------- | ------------------------ |
+| Runtime        | Node.js 22               |
+| Web framework  | Express 4                |
+| Database       | MySQL (via `mysql2`)     |
+| Authentication | JSON Web Tokens + bcrypt |
+| PDF generation | PDFKit                   |
 
 ---
 
 ## Prerequisites
 
-- Node.js (v16+ recommended)
-- npm
-- MySQL server running locally
-- A database created (the name should match the value provided in the `.env` file)
+- Node.js 22 or later (`.nvmrc` is provided — run `nvm use`)
+- npm 10 or later
+- A running MySQL server
 
 ---
 
-## Getting Started
+## Getting started
 
-### 1. Clone the repository
+### 1. Clone and install
 
-### 2. Install dependencies
+```bash
+git clone https://github.com/lvarnavas/nice-backend.git
+cd nice-backend
+npm install
+```
 
-- npm install
+### 2. Configure environment variables
 
-### 3. Set up environment variables
+Copy the example file and fill in the values:
 
-Create a .nodemon.json file in the root of the project and add the following content (Note: Only for development):
+```bash
+cp .env.example .env
+```
 
-    {
-        "env": {
-        "DB_USER": "",
-        "DB_PASSWORD": "",
-        "DB_NAME": "",
-        "DB_HOST": "",
-        "PORT": "" 
-        }
-    }   
+| Variable      | Required | Description                                           |
+| ------------- | -------- | ----------------------------------------------------- |
+| `PORT`        | yes      | Port the API listens on (e.g. `5001`)                  |
+| `DB_HOST`     | yes      | MySQL host, typically `localhost`                      |
+| `DB_USER`     | yes      | MySQL username                                         |
+| `DB_PASSWORD` | yes      | MySQL password (may be empty for a passwordless user)  |
+| `DB_NAME`     | yes      | Database name, e.g. `mydb`                             |
+| `JWT_SECRET`  | yes      | Secret used to sign authentication tokens              |
 
-    - PORT: The port where the API server will run. For example 5001.
+Generate a strong `JWT_SECRET` with:
 
-    - DB_HOST: The MySQL host (typically localhost).
+```bash
+openssl rand -hex 32
+```
 
-    - DB_USER: Your MySQL username.
+Use a **different secret in every environment** and never commit it. The server
+refuses to start if any required variable is missing.
 
-    - DB_PASSWORD: Your MySQL password.
+> During development you may instead supply these through a local
+> `nodemon.json`. That file is git-ignored for the same reason `.env` is.
 
-    - DB_NAME: The name of the MySQL database to connect to.
+### 3. Create the database
 
-### 4. Create a database
+The schema and seed data are created automatically on first run, but the
+database itself must exist:
 
-Create a database with database name "mydb" manually on MySQL to initialize the database.
+```sql
+CREATE DATABASE mydb;
+```
 
-- CREATE DATABASE mydb;
+The configured MySQL user needs permission to create tables in it.
 
-### 5. Start the server (development) 
+### 4. Run the server
 
-Start the server for development with nodemon.
+```bash
+npm run dev    # development, with nodemon file watching
+npm start      # production
+```
 
-    - npm run dev
+The API is then available at `http://localhost:5001/api`.
 
-    This uses nodemon to watch for file changes.
+On first start the server creates the schema and, if the `users` table is empty,
+inserts the initial seed data.
 
-    The server will start on http://localhost:5001 (or the port specified in .env).
+---
 
-    Upon first run, it will attempt to create the database schema and insert initial data if none is present.
+## API overview
 
+All routes are mounted under `/api`. Tokens issued at login expire after one hour.
 
-## API Endpoints
+### Authentication
 
-The API is accessible via: http://localhost:5001/api
+| Method | Endpoint           | Description                     |
+| ------ | ------------------ | ------------------------------- |
+| `POST` | `/users/login`     | Authenticate and receive a JWT  |
 
-Example routes (depending on your implementation):
+### Stock and reference data
 
-    GET /api/users
+| Method | Endpoint                                | Description                          |
+| ------ | --------------------------------------- | ------------------------------------ |
+| `GET`  | `/products/warehouse-status`            | Current warehouse stock              |
+| `GET`  | `/products/total-products-destructions-status` | Aggregated destruction totals |
+| `POST` | `/products/warehouse-last-month-status` | Stock as of the previous month       |
+| `GET`  | `/products/get-car-list`                | Vehicles available for entries       |
+| `GET`  | `/products/get-products`                | Product catalogue                    |
 
-    POST /api/login
+### Daily entries
 
-    etc.
+| Method   | Endpoint                                          | Description                        |
+| -------- | ------------------------------------------------- | ---------------------------------- |
+| `POST`   | `/products/loads/:carId?/:startDate/:endDate`     | Loads for a vehicle or all vehicles |
+| `POST`   | `/products/returns/:carId?/:startDate/:endDate`   | Returns for the given range        |
+| `POST`   | `/products/destructions/:carId?/:startDate/:endDate` | Destructions for the given range |
+| `POST`   | `/products/add-loads`                             | Record vehicle loads               |
+| `POST`   | `/products/add-returns`                           | Record vehicle returns             |
+| `POST`   | `/products/add-car-destructions`                  | Record vehicle destructions        |
+| `POST`   | `/products/add-warehouse-destructions`            | Record warehouse destructions      |
+| `POST`   | `/products/check-entry`                           | Check whether an entry exists      |
+| `POST`   | `/products/get-quantities`                        | Quantities for an existing entry   |
+| `PATCH`  | `/products/edit-entry`                            | Amend an existing entry            |
+| `DELETE` | `/products/delete-item/:itemId`                   | Remove a single entry item         |
+| `POST`   | `/products/calibrate-warehouse`                   | Reconcile warehouse quantities     |
 
-## Notes
+### Reports
 
-Make sure your MySQL service is running before starting the server.
+| Method | Endpoint                                              | Description                     |
+| ------ | ----------------------------------------------------- | ------------------------------- |
+| `POST` | `/products/generate-report`                           | Generate a single-day PDF report |
+| `GET`  | `/products/generate-date-range-report/:startDate/:endDate` | Generate a range PDF report |
+| `GET`  | `/products/reports-list`                              | List previously generated reports |
+| `GET`  | `/products/report/:fileName`                          | Download a generated report      |
 
-    If you get an error like Unknown database 'mydb', ensure that:
+---
 
-        - The database user has the right permissions to create databases.
+## Project structure
 
-        - Your .env config is correct.
+```
+controllers/   Request handlers (products, users)
+database/      Connection pool, schema creation, seed data
+models/        Shared error model
+routes/        Express route definitions
+shared/        Configuration and helpers
+assets/        Static assets used in generated PDFs
+server.js      Application entry point
+```
+
+---
+
+## Troubleshooting
+
+**`Missing required environment variables: ...`** — copy `.env.example` to `.env`
+and fill in every listed key.
+
+**`Unknown database 'mydb'`** — create the database manually and confirm the
+MySQL user has permission to create tables in it.
+
+---
+
+## Contributing
+
+Branching model, commit conventions and the pull request process are documented
+in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+---
+
+## License
+
+Released under the [MIT License](LICENSE).
