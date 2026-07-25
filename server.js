@@ -1,8 +1,6 @@
 const config = require("./shared/config");
 const express = require("express");
-const fs = require("fs");
 const path = require("path");
-const bodyParser = require("body-parser");
 
 const userRoute = require("./routes/user-routes");
 const productRoute = require("./routes/product-routes");
@@ -13,7 +11,6 @@ const HttpError = require("./models/http-error");
 
 const app = express();
 
-app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
@@ -43,20 +40,33 @@ app.use((req, res, next) => {
 app.use("/api/users", userRoute);
 app.use("/api/products", checkAuth, productRoute);
 
-app.use((req, res, next) => {
+// An unmatched /api request is a genuine 404 and must be reported as JSON.
+// Registered before the single-page-app fallback, which would otherwise answer
+// every request and leave this unreachable.
+app.use("/api", (req, res, next) => {
+  next(new HttpError("Could not find this route.", 404));
+});
+
+// Any other path is a client-side route, so hand back the app shell.
+app.use((req, res) => {
   res.sendFile(path.resolve(__dirname, "public", "index.html"));
 });
 
-app.use((req, res, next) => {
-  const error = new HttpError("Could not find this route.", 404);
-  throw error;
-});
-
 app.use((error, req, res, next) => {
-  if (res.headerSent) {
+  if (res.headersSent) {
     return next(error);
   }
-  res.status(error.code || 500);
+
+  // HttpError carries the status as `code`; the user controllers set `status`.
+  // Node's own errors also use `code`, but for string identifiers such as
+  // ECONNREFUSED, which would throw if handed to res.status().
+  const candidate = error.status || error.code;
+  const status =
+    Number.isInteger(candidate) && candidate >= 400 && candidate <= 599
+      ? candidate
+      : 500;
+
+  res.status(status);
   res.json({ message: error.message || "An unknown error occurred" });
 });
 
